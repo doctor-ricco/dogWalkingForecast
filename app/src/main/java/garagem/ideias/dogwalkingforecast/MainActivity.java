@@ -1,10 +1,18 @@
 package garagem.ideias.dogwalkingforecast;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import garagem.ideias.dogwalkingforecast.adapter.ForecastAdapter;
@@ -15,6 +23,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,40 +32,107 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 public class MainActivity extends AppCompatActivity {
     // Replace with your actual OpenWeatherMap API key
     private static final String API_KEY = "15083413d0f0d7bcc5b45362c97f8998";
     private static final String BASE_URL = "https://api.openweathermap.org/";
-    private static final double LATITUDE = -23.5505;
-    private static final double LONGITUDE = -46.6333;
-    private static final String LOCATION_NAME = "São Paulo, Brazil";
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1234;
     
     private RecyclerView recyclerView;
     private ForecastAdapter adapter;
     private ProgressBar progressBar;
+    private MaterialToolbar toolbar;
+    private FusedLocationProviderClient fusedLocationClient;
+    private double currentLatitude = 0;
+    private double currentLongitude = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Setup toolbar
-        MaterialToolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.app_name);
-            getSupportActionBar().setSubtitle(LOCATION_NAME);
-        }
-
+        // Initialize views
+        toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
         
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(R.string.app_name);
+        }
+
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new ForecastAdapter(new ArrayList<>());
         recyclerView.setAdapter(adapter);
 
-        fetchWeatherForecast();
+        // Initialize location services
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        checkLocationPermission();
+    }
+
+    private void checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            getCurrentLocation();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                         @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                getCurrentLocation();
+            } else {
+                showError("Location permission is required for local weather");
+            }
+        }
+    }
+
+    private void getCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            if (location != null) {
+                                currentLatitude = location.getLatitude();
+                                currentLongitude = location.getLongitude();
+                                updateLocationName();
+                                fetchWeatherForecast();
+                            }
+                        }
+                    });
+        }
+    }
+
+    private void updateLocationName() {
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addresses = geocoder.getFromLocation(currentLatitude, currentLongitude, 1);
+            if (addresses != null && !addresses.isEmpty()) {
+                Address address = addresses.get(0);
+                String cityName = address.getLocality();
+                String countryName = address.getCountryName();
+                String locationText = cityName + ", " + countryName;
+                
+                if (getSupportActionBar() != null) {
+                    getSupportActionBar().setSubtitle(locationText);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void fetchWeatherForecast() {
@@ -74,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
 
         WeatherService service = retrofit.create(WeatherService.class);
         
-        service.getWeatherForecast(LATITUDE, LONGITUDE, "metric", API_KEY)
+        service.getWeatherForecast(currentLatitude, currentLongitude, "metric", API_KEY)
                 .enqueue(new Callback<WeatherResponse>() {
                     @Override
                     public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
