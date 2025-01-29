@@ -47,5 +47,5 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
 
     // Location Services
-    implementation("com.google.android.gms:play-services-location:17.1.0")
+    implementation(libs.google.play.services.location)
 }

@@ -30,17 +30,17 @@ public class CircularScoreView extends View {
         backgroundPaint = new Paint();
         backgroundPaint.setColor(ContextCompat.getColor(getContext(), R.color.score_background));
         backgroundPaint.setStyle(Paint.Style.STROKE);
-        backgroundPaint.setStrokeWidth(16f);
+        backgroundPaint.setStrokeWidth(20f);
         backgroundPaint.setAntiAlias(true);
 
         scorePaint = new Paint();
         scorePaint.setStyle(Paint.Style.STROKE);
-        scorePaint.setStrokeWidth(16f);
+        scorePaint.setStrokeWidth(10f);
         scorePaint.setAntiAlias(true);
 
         textPaint = new Paint();
         textPaint.setColor(ContextCompat.getColor(getContext(), R.color.score_text));
-        textPaint.setTextSize(42f);
+        textPaint.setTextSize(50f);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setAntiAlias(true);
         textPaint.setFakeBoldText(true);
