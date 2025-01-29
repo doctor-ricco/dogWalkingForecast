@@ -15,6 +15,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.material.appbar.MaterialToolbar;
 import garagem.ideias.dogwalkingforecast.adapter.ForecastAdapter;
 import garagem.ideias.dogwalkingforecast.api.WeatherService;
 import garagem.ideias.dogwalkingforecast.model.WeatherResponse;
@@ -31,10 +35,6 @@ import java.util.Map;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnSuccessListener;
 
 public class MainActivity extends AppCompatActivity {
     // Replace with your actual OpenWeatherMap API key
