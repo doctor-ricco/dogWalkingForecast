@@ -51,9 +51,14 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             forecast.wind.speed,
             forecast.pop * 100);
         
-        // Generate recommendation
+        // Update recommendation text style
+        holder.recommendationText.setTextSize(16f);
+        holder.recommendationText.setAlpha(0.9f);
+        holder.recommendationText.setPadding(24, 16, 24, 24);
+        
         String recommendation = generateWalkingRecommendation(walkingScore);
 
+        // Set all the text views
         holder.dateText.setText(date);
         holder.temperatureText.setText(temperature);
         holder.descriptionText.setText(description);
@@ -104,15 +109,15 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
 
     private String generateWalkingRecommendation(int score) {
         if (score >= 90) {
-            return "🐕 Tail-wagging perfect! Your pup will love this weather!";
+            return "Perfect weather for a walk! 🐾";
         } else if (score >= 70) {
-            return "🦮 Paws up! Great day for walkies and sniffing adventures!";
+            return "Great conditions for walking! 🐕";
         } else if (score >= 50) {
-            return "🐾 Not too shabby - just keep those treats handy!";
+            return "Decent weather for a short walk 🦮";
         } else if (score >= 30) {
-            return "🐶 Meh... Maybe a quick potty break and back to the couch?";
+            return "Consider a quick walk only 🌦️";
         } else {
-            return "🐕‍🦺 Netflix & belly rubs kind of day!";
+            return "Better stay indoors today 🏠";
         }
     }
 
