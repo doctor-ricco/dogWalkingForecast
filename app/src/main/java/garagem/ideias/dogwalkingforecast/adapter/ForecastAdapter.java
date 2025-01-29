@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import garagem.ideias.dogwalkingforecast.R;
 import garagem.ideias.dogwalkingforecast.model.WeatherResponse.ForecastItem;
+import garagem.ideias.dogwalkingforecast.view.CircularScoreView;
 
 public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastViewHolder> {
     private List<ForecastItem> forecasts;
@@ -50,15 +51,14 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             forecast.wind.speed,
             forecast.pop * 100);
         
-        // Generate recommendation with score
-        String recommendation = String.format("Walking Score: %d%% - %s",
-            walkingScore,
-            generateWalkingRecommendation(walkingScore));
+        // Generate recommendation
+        String recommendation = generateWalkingRecommendation(walkingScore);
 
         holder.dateText.setText(date);
         holder.temperatureText.setText(temperature);
         holder.descriptionText.setText(description);
         holder.recommendationText.setText(recommendation);
+        holder.scoreView.setScore(walkingScore);
     }
 
     private int calculateWalkingScore(ForecastItem forecast) {
@@ -104,15 +104,15 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
 
     private String generateWalkingRecommendation(int score) {
         if (score >= 90) {
-            return "Perfect conditions for a dog walk!";
+            return "🐕 Tail-wagging perfect! Your pup will love this weather!";
         } else if (score >= 70) {
-            return "Very good conditions for walking";
+            return "🦮 Paws up! Great day for walkies and sniffing adventures!";
         } else if (score >= 50) {
-            return "Acceptable conditions, but take precautions";
+            return "🐾 Not too shabby - just keep those treats handy!";
         } else if (score >= 30) {
-            return "Not ideal conditions, consider shorter walk";
+            return "🐶 Meh... Maybe a quick potty break and back to the couch?";
         } else {
-            return "Poor conditions, consider indoor activities";
+            return "🐕‍🦺 Netflix & belly rubs kind of day!";
         }
     }
 
@@ -131,6 +131,7 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         TextView temperatureText;
         TextView descriptionText;
         TextView recommendationText;
+        CircularScoreView scoreView;
 
         ForecastViewHolder(View itemView) {
             super(itemView);
@@ -138,6 +139,7 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             temperatureText = itemView.findViewById(R.id.temperatureText);
             descriptionText = itemView.findViewById(R.id.descriptionText);
             recommendationText = itemView.findViewById(R.id.recommendationText);
+            scoreView = itemView.findViewById(R.id.scoreView);
         }
     }
 } 

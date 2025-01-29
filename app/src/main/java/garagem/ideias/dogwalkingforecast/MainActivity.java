@@ -22,11 +22,15 @@ import java.util.Map;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import com.google.android.material.appbar.MaterialToolbar;
 
 public class MainActivity extends AppCompatActivity {
     // Replace with your actual OpenWeatherMap API key
     private static final String API_KEY = "15083413d0f0d7bcc5b45362c97f8998";
     private static final String BASE_URL = "https://api.openweathermap.org/";
+    private static final double LATITUDE = -23.5505;
+    private static final double LONGITUDE = -46.6333;
+    private static final String LOCATION_NAME = "São Paulo, Brazil";
     
     private RecyclerView recyclerView;
     private ForecastAdapter adapter;
@@ -36,6 +40,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Setup toolbar
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(R.string.app_name);
+            getSupportActionBar().setSubtitle(LOCATION_NAME);
+        }
 
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
@@ -62,11 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
         WeatherService service = retrofit.create(WeatherService.class);
         
-        // Using São Paulo coordinates
-        double lat = -23.5505;
-        double lon = -46.6333;
-
-        service.getWeatherForecast(lat, lon, "metric", API_KEY)
+        service.getWeatherForecast(LATITUDE, LONGITUDE, "metric", API_KEY)
                 .enqueue(new Callback<WeatherResponse>() {
                     @Override
                     public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
