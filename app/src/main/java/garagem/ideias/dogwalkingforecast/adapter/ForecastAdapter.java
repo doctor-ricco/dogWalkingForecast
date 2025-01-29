@@ -1,0 +1,143 @@
+package garagem.ideias.dogwalkingforecast.adapter;
+
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import garagem.ideias.dogwalkingforecast.R;
+import garagem.ideias.dogwalkingforecast.model.WeatherResponse.ForecastItem;
+
+public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastViewHolder> {
+    private List<ForecastItem> forecasts;
+
+    public ForecastAdapter(List<ForecastItem> forecasts) {
+        this.forecasts = forecasts;
+    }
+
+    @NonNull
+    @Override
+    public ForecastViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_forecast, parent, false);
+        return new ForecastViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ForecastViewHolder holder, int position) {
+        ForecastItem forecast = forecasts.get(position);
+        
+        // Format date
+        SimpleDateFormat sdf = new SimpleDateFormat("EEEE, MMM d", Locale.getDefault());
+        String date = sdf.format(new Date(forecast.dt * 1000));
+        
+        // Calculate walking score
+        int walkingScore = calculateWalkingScore(forecast);
+        
+        // Format temperature
+        String temperature = String.format(Locale.getDefault(), 
+            "Temperature: %.1f°C (Min: %.1f°C, Max: %.1f°C)",
+            forecast.main.temp, forecast.main.temp_min, forecast.main.temp_max);
+        
+        // Get weather description
+        String description = String.format("Weather: %s\nWind: %.1f m/s\nRain chance: %.0f%%",
+            forecast.weather.get(0).description,
+            forecast.wind.speed,
+            forecast.pop * 100);
+        
+        // Generate recommendation with score
+        String recommendation = String.format("Walking Score: %d%% - %s",
+            walkingScore,
+            generateWalkingRecommendation(walkingScore));
+
+        holder.dateText.setText(date);
+        holder.temperatureText.setText(temperature);
+        holder.descriptionText.setText(description);
+        holder.recommendationText.setText(recommendation);
+    }
+
+    private int calculateWalkingScore(ForecastItem forecast) {
+        int tempScore = calculateTemperatureScore(forecast.main.temp);
+        int rainScore = calculateRainScore(forecast.pop);
+        int windScore = calculateWindScore(forecast.wind.speed);
+        
+        // Weight the scores (temperature being most important, then rain, then wind)
+        double weightedScore = (tempScore * 0.5) + (rainScore * 0.3) + (windScore * 0.2);
+        return (int) Math.round(weightedScore);
+    }
+
+    private int calculateTemperatureScore(double temp) {
+        // Ideal temperature range for dogs: 10°C to 20°C
+        if (temp < -10) return 0;  // Too cold
+        if (temp > 35) return 0;   // Too hot
+        
+        if (temp >= 10 && temp <= 20) {
+            return 100;  // Perfect temperature range
+        }
+        
+        // Score decreases as temperature moves away from ideal range
+        if (temp < 10) {
+            return (int) (100 * (1 - (10 - temp) / 20));  // Linear decrease from 10°C to -10°C
+        } else {
+            return (int) (100 * (1 - (temp - 20) / 15));  // Linear decrease from 20°C to 35°C
+        }
+    }
+
+    private int calculateRainScore(double rainProbability) {
+        // Convert probability (0-1) to score (100-0)
+        return (int) (100 * (1 - rainProbability));
+    }
+
+    private int calculateWindScore(double windSpeed) {
+        // Wind speed in m/s
+        if (windSpeed < 1) return 100;    // Perfect conditions
+        if (windSpeed > 15) return 0;     // Too windy
+        
+        // Linear decrease from 1 m/s to 15 m/s
+        return (int) (100 * (1 - (windSpeed - 1) / 14));
+    }
+
+    private String generateWalkingRecommendation(int score) {
+        if (score >= 90) {
+            return "Perfect conditions for a dog walk!";
+        } else if (score >= 70) {
+            return "Very good conditions for walking";
+        } else if (score >= 50) {
+            return "Acceptable conditions, but take precautions";
+        } else if (score >= 30) {
+            return "Not ideal conditions, consider shorter walk";
+        } else {
+            return "Poor conditions, consider indoor activities";
+        }
+    }
+
+    @Override
+    public int getItemCount() {
+        return forecasts.size();
+    }
+
+    public void updateForecasts(List<ForecastItem> newForecasts) {
+        this.forecasts = newForecasts;
+        notifyDataSetChanged();
+    }
+
+    static class ForecastViewHolder extends RecyclerView.ViewHolder {
+        TextView dateText;
+        TextView temperatureText;
+        TextView descriptionText;
+        TextView recommendationText;
+
+        ForecastViewHolder(View itemView) {
+            super(itemView);
+            dateText = itemView.findViewById(R.id.dateText);
+            temperatureText = itemView.findViewById(R.id.temperatureText);
+            descriptionText = itemView.findViewById(R.id.descriptionText);
+            recommendationText = itemView.findViewById(R.id.recommendationText);
+        }
+    }
+} 
