@@ -8,18 +8,25 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/background">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:title="@string/app_name"
+            android:background="@color/background"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
             app:titleTextColor="@android:color/white"
-            app:subtitle="Loading location..."
             app:subtitleTextColor="@android:color/white"
+            app:titleCentered="true"
+            app:subtitleCentered="true"
+            app:title="@string/app_name"
+            app:subtitle="Loading location..."
             app:subtitleTextAppearance="@style/TextAppearance.App.Subtitle" />
 
     </com.google.android.material.appbar.AppBarLayout>

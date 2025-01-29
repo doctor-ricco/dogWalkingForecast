@@ -51,7 +51,7 @@ public class CircularScoreView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        int padding = 16;
+        int padding = 10;
         circleRect.set(padding, padding, w - padding, h - padding);
     }
 

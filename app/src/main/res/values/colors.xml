@@ -6,27 +6,27 @@
     <color name="accent">#FF8BC34A</color>
     
     <!-- Card Colors -->
-    <color name="card_background">#FFFFFF</color>
-    <color name="card_background_dark">#272727</color>
-    <color name="card_shadow">#1A000000</color>
+    <color name="card_background">#1A1A1A</color>
+    <color name="card_background_dark">#151515</color>
+    <color name="card_shadow">#40000000</color>
     
     <!-- Score Colors -->
-    <color name="score_background">#20000000</color>
-    <color name="score_text">#DE000000</color>
+    <color name="score_background">#20FFFFFF</color>
+    <color name="score_text">#DEFFFFFF</color>
     <color name="score_text_dark">#DEFFFFFF</color>
     <color name="score_excellent">#FF4CAF50</color>
     <color name="score_good">#FF8BC34A</color>
-    <color name="score_moderate">#FFFFB300</color>
-    <color name="score_poor">#FFFF7043</color>
+    <color name="score_moderate">#FFFFEB3B</color>
+    <color name="score_poor">#FFFF9800</color>
     <color name="score_bad">#FFF44336</color>
 
     <!-- Text Colors -->
-    <color name="text_primary">#DE000000</color>
+    <color name="text_primary">#DEFFFFFF</color>
     <color name="text_primary_dark">#DEFFFFFF</color>
-    <color name="text_secondary">#99000000</color>
+    <color name="text_secondary">#99FFFFFF</color>
     <color name="text_secondary_dark">#99FFFFFF</color>
-    <color name="background">#FFF5F5F5</color>
-    <color name="background_dark">#121212</color>
+    <color name="background">#000000</color>
+    <color name="background_dark">#000000</color>
 
     <!-- Required system colors -->
     <color name="black">#FF000000</color>
