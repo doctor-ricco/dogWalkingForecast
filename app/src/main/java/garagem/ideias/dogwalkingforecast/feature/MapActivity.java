@@ -32,6 +32,9 @@ import java.net.URL;
 import java.util.ArrayList;
 
 import garagem.ideias.dogwalkingforecast.R;
+import android.content.Intent;
+import android.net.Uri;
+import com.google.android.material.appbar.MaterialToolbar;
 
 public class MapActivity extends AppCompatActivity {
 
@@ -45,6 +48,13 @@ public class MapActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE));
         setContentView(R.layout.activity_map);
+
+        // Setup toolbar
+        MaterialToolbar toolbar = findViewById(R.id.mapToolbar);
+        setSupportActionBar(toolbar);
+        
+        // Setup back button
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
         mapView = findViewById(R.id.map);
         mapView.setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK);
@@ -95,6 +105,18 @@ public class MapActivity extends AppCompatActivity {
                             // Center the map on the user's location
                             GeoPoint userLocation = new GeoPoint(latitude, longitude);
                             mapView.getController().setCenter(userLocation);
+
+                            // Add user location marker
+                            Marker userMarker = new Marker(mapView);
+                            userMarker.setPosition(userLocation);
+                            userMarker.setTitle("You are here");
+                            userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                            
+                            // Make the marker red and bigger
+                            userMarker.setIcon(getResources().getDrawable(R.drawable.ic_user_location));
+                            
+                            mapView.getOverlays().add(userMarker);
+                            mapView.invalidate();
 
                             // Fetch nearby parks dynamically
                             fetchNearbyDogParks(latitude, longitude);
@@ -187,12 +209,44 @@ public class MapActivity extends AppCompatActivity {
                     Marker marker = new Marker(mapView);
                     marker.setPosition(parkLocation);
                     marker.setTitle("Dog-Friendly Park");
+                    marker.setSnippet("Tap for directions");
+                    
+                    // Set paw icon for park markers
+                    marker.setIcon(getResources().getDrawable(R.drawable.ic_dog_paw));
+                    
+                    // Add click listener to marker
+                    marker.setOnMarkerClickListener((marker1, mapView) -> {
+                        openGoogleMapsNavigation(lat, lon);
+                        return true;
+                    });
+                    
                     mapView.getOverlays().add(marker);
                 }
             }
+            mapView.invalidate();
             Toast.makeText(this, "Nearby parks loaded", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void openGoogleMapsNavigation(double destLat, double destLon) {
+        // Create a Uri with the destination coordinates
+        Uri gmmIntentUri = Uri.parse("google.navigation:q=" + destLat + "," + destLon + "&mode=w");
+        
+        // Create an Intent to open Google Maps
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+        mapIntent.setPackage("com.google.android.apps.maps");
+
+        // Check if Google Maps is installed
+        if (mapIntent.resolveActivity(getPackageManager()) != null) {
+            startActivity(mapIntent);
+        } else {
+            // If Google Maps isn't installed, open in browser
+            Uri browserUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" 
+                + destLat + "," + destLon + "&travelmode=walking");
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, browserUri);
+            startActivity(browserIntent);
         }
     }
 

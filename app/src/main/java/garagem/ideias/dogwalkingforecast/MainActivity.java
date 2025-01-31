@@ -29,6 +29,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -179,6 +180,9 @@ public class MainActivity extends AppCompatActivity {
     private List<WeatherResponse.ForecastItem> filterDailyForecasts(List<WeatherResponse.ForecastItem> allForecasts) {
         Map<String, WeatherResponse.ForecastItem> dailyMap = new HashMap<>();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        
+        // Get current date for comparison
+        String currentDate = dateFormat.format(new Date());
 
         for (WeatherResponse.ForecastItem forecast : allForecasts) {
             String date = dateFormat.format(new Date(forecast.dt * 1000));
@@ -189,7 +193,16 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        return new ArrayList<>(dailyMap.values());
+        // Convert to list and sort
+        List<WeatherResponse.ForecastItem> sortedForecasts = new ArrayList<>(dailyMap.values());
+        Collections.sort(sortedForecasts, (a, b) -> {
+            // Compare dates
+            Date dateA = new Date(a.dt * 1000);
+            Date dateB = new Date(b.dt * 1000);
+            return dateA.compareTo(dateB);
+        });
+
+        return sortedForecasts;
     }
 
     private boolean isCloserToNoon(WeatherResponse.ForecastItem existing, WeatherResponse.ForecastItem newForecast) {
