@@ -48,4 +48,7 @@ dependencies {
 
     // Location Services
     implementation(libs.google.play.services.location)
+
+    implementation("org.osmdroid:osmdroid-android:6.1.16")
+
 }

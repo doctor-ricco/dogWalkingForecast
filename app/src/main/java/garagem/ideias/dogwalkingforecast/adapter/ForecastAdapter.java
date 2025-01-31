@@ -1,16 +1,21 @@
 package garagem.ideias.dogwalkingforecast.adapter;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
 import garagem.ideias.dogwalkingforecast.R;
+import garagem.ideias.dogwalkingforecast.feature.MapActivity;
 import garagem.ideias.dogwalkingforecast.model.WeatherResponse.ForecastItem;
 import garagem.ideias.dogwalkingforecast.view.CircularScoreView;
 
@@ -32,30 +37,25 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
     @Override
     public void onBindViewHolder(@NonNull ForecastViewHolder holder, int position) {
         ForecastItem forecast = forecasts.get(position);
-        
+
         // Format date
         SimpleDateFormat sdf = new SimpleDateFormat("EEEE, MMM d", Locale.getDefault());
         String date = sdf.format(new Date(forecast.dt * 1000));
-        
+
         // Calculate walking score
         int walkingScore = calculateWalkingScore(forecast);
-        
+
         // Format temperature
-        String temperature = String.format(Locale.getDefault(), 
-            "Temperature: %.1f°C (Min: %.1f°C, Max: %.1f°C)",
-            forecast.main.temp, forecast.main.temp_min, forecast.main.temp_max);
-        
+        String temperature = String.format(Locale.getDefault(),
+                "Temperature: %.1f°C (Min: %.1f°C, Max: %.1f°C)",
+                forecast.main.temp, forecast.main.temp_min, forecast.main.temp_max);
+
         // Get weather description
         String description = String.format("Weather: %s\nWind: %.1f m/s\nRain chance: %.0f%%",
-            forecast.weather.get(0).description,
-            forecast.wind.speed,
-            forecast.pop * 100);
-        
-        // Update recommendation text style
-        holder.recommendationText.setTextSize(16f);
-        holder.recommendationText.setAlpha(0.9f);
-        holder.recommendationText.setPadding(24, 16, 24, 24);
-        
+                forecast.weather.get(0).description,
+                forecast.wind.speed,
+                forecast.pop * 100);
+
         String recommendation = generateWalkingRecommendation(walkingScore);
 
         // Set all the text views
@@ -64,13 +64,19 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         holder.descriptionText.setText(description);
         holder.recommendationText.setText(recommendation);
         holder.scoreView.setScore(walkingScore);
+
+        // Set click listener for the card view
+        holder.itemView.setOnClickListener(view -> {
+            Intent intent = new Intent(view.getContext(), MapActivity.class);
+            view.getContext().startActivity(intent);
+        });
     }
 
     private int calculateWalkingScore(ForecastItem forecast) {
         int tempScore = calculateTemperatureScore(forecast.main.temp);
         int rainScore = calculateRainScore(forecast.pop);
         int windScore = calculateWindScore(forecast.wind.speed);
-        
+
         // Weight the scores (temperature being most important, then rain, then wind)
         double weightedScore = (tempScore * 0.5) + (rainScore * 0.3) + (windScore * 0.2);
         return (int) Math.round(weightedScore);
@@ -80,11 +86,11 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         // Ideal temperature range for dogs: 10°C to 20°C
         if (temp < -10) return 0;  // Too cold
         if (temp > 35) return 0;   // Too hot
-        
+
         if (temp >= 10 && temp <= 20) {
             return 100;  // Perfect temperature range
         }
-        
+
         // Score decreases as temperature moves away from ideal range
         if (temp < 10) {
             return (int) (100 * (1 - (10 - temp) / 20));  // Linear decrease from 10°C to -10°C
@@ -102,7 +108,7 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         // Wind speed in m/s
         if (windSpeed < 1) return 100;    // Perfect conditions
         if (windSpeed > 15) return 0;     // Too windy
-        
+
         // Linear decrease from 1 m/s to 15 m/s
         return (int) (100 * (1 - (windSpeed - 1) / 14));
     }
@@ -147,4 +153,4 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             scoreView = itemView.findViewById(R.id.scoreView);
         }
     }
-} 
+}

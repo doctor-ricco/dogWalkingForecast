@@ -16,9 +16,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DogWalkingForecast"
         tools:targetApi="31">
-        
+
+        <meta-data
+            android:name="org.osmdroid.config"
+            android:value="osmdroid" />
+
+        <activity android:name=".feature.MapActivity"></activity>
+
         <activity
             android:name=".MainActivity"
+
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
