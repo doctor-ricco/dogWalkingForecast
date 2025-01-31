@@ -51,6 +51,38 @@
                 android:textAppearance="?attr/textAppearanceBody2"
                 android:textStyle="italic"
                 android:textColor="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/uvIndexText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/airQualityText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/groundTempText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/sunTimesText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBody2"
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
 
         <garagem.ideias.dogwalkingforecast.view.CircularScoreView

@@ -151,30 +151,35 @@ public class MainActivity extends AppCompatActivity {
 
         WeatherService service = retrofit.create(WeatherService.class);
         
-        service.getWeatherForecast(currentLatitude, currentLongitude, "metric", API_KEY)
-                .enqueue(new Callback<WeatherResponse>() {
-                    @Override
-                    public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
-                        progressBar.setVisibility(View.GONE);
-                        if (response.isSuccessful() && response.body() != null && response.body().list != null) {
-                            // Get one forecast per day (around noon)
-                            List<WeatherResponse.ForecastItem> dailyForecasts = filterDailyForecasts(response.body().list);
-                            adapter.updateForecasts(dailyForecasts);
-                        } else {
-                            try {
-                                showError("Error: " + response.errorBody().string());
-                            } catch (Exception e) {
-                                showError("Error fetching forecast");
-                            }
-                        }
+        service.getWeatherForecast(
+            currentLatitude, 
+            currentLongitude, 
+            "metric", 
+            API_KEY,
+            "minutely,hourly"  // exclude unnecessary data
+        ).enqueue(new Callback<WeatherResponse>() {
+            @Override
+            public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
+                progressBar.setVisibility(View.GONE);
+                if (response.isSuccessful() && response.body() != null && response.body().list != null) {
+                    // Get one forecast per day (around noon)
+                    List<WeatherResponse.ForecastItem> dailyForecasts = filterDailyForecasts(response.body().list);
+                    adapter.updateData(dailyForecasts, response.body().city);
+                } else {
+                    try {
+                        showError("Error: " + response.errorBody().string());
+                    } catch (Exception e) {
+                        showError("Error fetching forecast");
                     }
+                }
+            }
 
-                    @Override
-                    public void onFailure(Call<WeatherResponse> call, Throwable t) {
-                        progressBar.setVisibility(View.GONE);
-                        showError("Network error: " + t.getMessage());
-                    }
-                });
+            @Override
+            public void onFailure(Call<WeatherResponse> call, Throwable t) {
+                progressBar.setVisibility(View.GONE);
+                showError("Network error: " + t.getMessage());
+            }
+        });
     }
 
     private List<WeatherResponse.ForecastItem> filterDailyForecasts(List<WeatherResponse.ForecastItem> allForecasts) {

@@ -4,6 +4,12 @@ import java.util.List;
 
 public class WeatherResponse {
     public List<ForecastItem> list;
+    public City city;
+
+    public static class City {
+        public long sunrise;
+        public long sunset;
+    }
 
     public static class ForecastItem {
         public long dt;
@@ -13,6 +19,8 @@ public class WeatherResponse {
         public Wind wind;
         public double pop;
         public String dt_txt;
+        public double uvi;
+        public AirQuality air_quality;
     }
 
     public static class Main {
@@ -22,6 +30,7 @@ public class WeatherResponse {
         public double temp_max;
         public int pressure;
         public int humidity;
+        public double ground_temp;
     }
 
     public static class Weather {
@@ -39,5 +48,9 @@ public class WeatherResponse {
         public double speed;
         public double deg;
         public double gust;
+    }
+
+    public static class AirQuality {
+        public double aqi;
     }
 } 
