@@ -30,11 +30,16 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import garagem.ideias.dogwalkingforecast.R;
 import android.content.Intent;
 import android.net.Uri;
 import com.google.android.material.appbar.MaterialToolbar;
+import android.location.LocationManager;
+import android.app.AlertDialog;
+import android.content.Context;
 
 public class MapActivity extends AppCompatActivity {
 
@@ -56,177 +61,220 @@ public class MapActivity extends AppCompatActivity {
         // Setup back button
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
+        // Initialize map
         mapView = findViewById(R.id.map);
         mapView.setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK);
         mapView.setMultiTouchControls(true);
+        mapView.getController().setZoom(15.0);
 
-        // Set initial map settings
-        IMapController mapController = mapView.getController();
-        mapController.setZoom(15.0);
-
-        // Initialize the location client
+        // Initialize location client
         locationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // Check and request location permissions
-        checkLocationPermission();
+        // Check permissions and get location
+        if (checkLocationPermission()) {
+            getCurrentLocation();
+        }
+
+        // Check location services
+        checkLocationServices();
     }
 
-    private void checkLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    LOCATION_PERMISSION_REQUEST_CODE);
-        } else {
-            getUserLocation();
+    private void getCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            locationClient.getLastLocation()
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        // Clear any existing overlays
+                        mapView.getOverlays().clear();
+                        
+                        // Set user location
+                        GeoPoint userLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+                        mapView.getController().setCenter(userLocation);
+                        
+                        // Add user marker
+                        Marker userMarker = new Marker(mapView);
+                        userMarker.setPosition(userLocation);
+                        userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                        userMarker.setIcon(getResources().getDrawable(R.drawable.ic_user_location));
+                        userMarker.setTitle("You are here");
+                        mapView.getOverlays().add(userMarker);
+                        
+                        // Search for nearby places
+                        searchNearbyPlaces(location.getLatitude(), location.getLongitude());
+                        
+                        // Refresh map
+                        mapView.invalidate();
+                    } else {
+                        Toast.makeText(this, "Unable to get your location. Please check if GPS is enabled.", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error getting location: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    protected void onResume() {
+        super.onResume();
+        // Refresh location when activity resumes
+        if (checkLocationPermission()) {
+            getCurrentLocation();
+        }
+    }
+
+    private boolean checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    },
+                    LOCATION_PERMISSION_REQUEST_CODE);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, 
+            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getUserLocation();
+                getCurrentLocation();
             } else {
-                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Location permission is required to show nearby places", 
+                    Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    private void getUserLocation() {
-        locationClient.getLastLocation()
-                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        if (location != null) {
-                            double latitude = location.getLatitude();
-                            double longitude = location.getLongitude();
+    private void searchNearbyPlaces(double latitude, double longitude) {
+        // Search for dog parks
+        searchPlacesByType(latitude, longitude, "leisure=dog_park", R.drawable.ic_dog_paw, "Dog Park");
+        
+        // Search for veterinarians (both regular and emergency)
+        searchPlacesByType(latitude, longitude, "amenity=veterinary", R.drawable.ic_vet, "Veterinary");
+    }
 
-                            // Center the map on the user's location
-                            GeoPoint userLocation = new GeoPoint(latitude, longitude);
-                            mapView.getController().setCenter(userLocation);
-
-                            // Add user location marker
-                            Marker userMarker = new Marker(mapView);
-                            userMarker.setPosition(userLocation);
-                            userMarker.setTitle("You are here");
-                            userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-                            
-                            // Make the marker red and bigger
-                            userMarker.setIcon(getResources().getDrawable(R.drawable.ic_user_location));
-                            
-                            mapView.getOverlays().add(userMarker);
-                            mapView.invalidate();
-
-                            // Fetch nearby parks dynamically
-                            fetchNearbyDogParks(latitude, longitude);
-                        } else {
-                            Toast.makeText(MapActivity.this, "Unable to get location", Toast.LENGTH_SHORT).show();
-                        }
+    private void searchPlacesByType(double latitude, double longitude, String query, 
+            int markerIcon, String placeType) {
+        new AsyncTask<Void, Void, String>() {
+            @Override
+            protected String doInBackground(Void... voids) {
+                try {
+                    // Modified query to get only the center points of areas
+                    String overpassUrl;
+                    if (query.contains("leisure=dog_park")) {
+                        overpassUrl = String.format(
+                            "https://overpass-api.de/api/interpreter?data=" +
+                            "[out:json][timeout:25];" +
+                            "(" +
+                            "  way[%s](around:5000,%f,%f);" +
+                            ");" +
+                            "out center;" + // Get center points for ways
+                            "node[%s](around:5000,%f,%f);" +
+                            "out;",
+                            query, latitude, longitude,
+                            query, latitude, longitude
+                        );
+                    } else {
+                        // Original query for other types (vets)
+                        overpassUrl = String.format(
+                            "https://overpass-api.de/api/interpreter?data=" +
+                            "[out:json][timeout:25];" +
+                            "(" +
+                            "  node[%s](around:5000,%f,%f);" +
+                            ");" +
+                            "out;",
+                            query, latitude, longitude
+                        );
                     }
-                });
-    }
 
-
-    private void addNearbyMarkers(double userLat, double userLon) {
-        // Example nearby locations (replace with JSON or API data)
-        ArrayList<GeoPoint> nearbyLocations = new ArrayList<>();
-        nearbyLocations.add(new GeoPoint(38.7272, -9.1525)); // Eduardo VII Park
-        nearbyLocations.add(new GeoPoint(38.7339, -9.1951)); // Monsanto Forest Park
-        nearbyLocations.add(new GeoPoint(38.715, -9.14)); // Another example location
-
-        for (GeoPoint location : nearbyLocations) {
-            double distance = calculateDistance(userLat, userLon, location.getLatitude(), location.getLongitude());
-            if (distance <= 5.0) { // Show locations within 5 km
-                Marker marker = new Marker(mapView);
-                marker.setPosition(location);
-                marker.setTitle("Nearby Dog Park");
-                mapView.getOverlays().add(marker);
-            }
-        }
-    }
-
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-        float[] results = new float[1];
-        Location.distanceBetween(lat1, lon1, lat2, lon2, results);
-        return results[0] / 1000; // Distance in km
-    }
-
-    private void fetchNearbyDogParks(double latitude, double longitude) {
-        String overpassQuery = "[out:json];"
-                + "node[leisure=park](around:5000," + latitude + "," + longitude + ");"
-                + "out;";
-
-        String apiUrl = "https://overpass-api.de/api/interpreter?data=" + overpassQuery;
-
-        new FetchDogParksTask().execute(apiUrl);
-    }
-
-    private class FetchDogParksTask extends AsyncTask<String, Void, JSONArray> {
-        @Override
-        protected JSONArray doInBackground(String... urls) {
-            try {
-                URL url = new URL(urls[0]);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("Accept", "application/json");
-
-                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
+                    URL url = new URL(overpassUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder result = new StringBuilder();
+                    String line;
+                    while ((line = rd.readLine()) != null) {
+                        result.append(line);
+                    }
+                    rd.close();
+                    return result.toString();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
                 }
-                reader.close();
-
-                JSONObject jsonResponse = new JSONObject(response.toString());
-                return jsonResponse.getJSONArray("elements");
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
             }
-        }
 
-        @Override
-        protected void onPostExecute(JSONArray elements) {
-            if (elements != null) {
-                addDynamicMarkers(elements);
-            } else {
-                Toast.makeText(MapActivity.this, "Failed to fetch nearby locations", Toast.LENGTH_SHORT).show();
+            @Override
+            protected void onPostExecute(String result) {
+                if (result != null) {
+                    addMarkersToMap(result, markerIcon, placeType);
+                }
             }
-        }
+        }.execute();
     }
 
-    private void addDynamicMarkers(JSONArray elements) {
+    private void addMarkersToMap(String jsonResult, int markerIcon, String placeType) {
         try {
+            JSONObject data = new JSONObject(jsonResult);
+            JSONArray elements = data.getJSONArray("elements");
+            Set<String> addedLocations = new HashSet<>();
+
             for (int i = 0; i < elements.length(); i++) {
                 JSONObject element = elements.getJSONObject(i);
+                
+                // Get coordinates either directly or from center
+                final double[] coordinates = new double[2]; // [lat, lon]
                 if (element.has("lat") && element.has("lon")) {
-                    double lat = element.getDouble("lat");
-                    double lon = element.getDouble("lon");
-
-                    GeoPoint parkLocation = new GeoPoint(lat, lon);
-                    Marker marker = new Marker(mapView);
-                    marker.setPosition(parkLocation);
-                    marker.setTitle("Dog-Friendly Park");
-                    marker.setSnippet("Tap for directions");
-                    
-                    // Set paw icon for park markers
-                    marker.setIcon(getResources().getDrawable(R.drawable.ic_dog_paw));
-                    
-                    // Add click listener to marker
-                    marker.setOnMarkerClickListener((marker1, mapView) -> {
-                        openGoogleMapsNavigation(lat, lon);
-                        return true;
-                    });
-                    
-                    mapView.getOverlays().add(marker);
+                    coordinates[0] = element.getDouble("lat");
+                    coordinates[1] = element.getDouble("lon");
+                } else if (element.has("center")) {
+                    JSONObject center = element.getJSONObject("center");
+                    coordinates[0] = center.getDouble("lat");
+                    coordinates[1] = center.getDouble("lon");
+                } else {
+                    continue;  // Skip if no coordinates found
                 }
+
+                // Create a unique key for this location
+                String locationKey = String.format("%.5f,%.5f", coordinates[0], coordinates[1]);
+                
+                // Skip if we've already added a marker at this location
+                if (addedLocations.contains(locationKey)) {
+                    continue;
+                }
+                addedLocations.add(locationKey);
+
+                // Get name from tags if available
+                final String name = element.has("tags") && 
+                                  element.getJSONObject("tags").has("name") ? 
+                                  element.getJSONObject("tags").getString("name") : 
+                                  placeType;
+
+                GeoPoint location = new GeoPoint(coordinates[0], coordinates[1]);
+                Marker marker = new Marker(mapView);
+                marker.setPosition(location);
+                marker.setTitle(name);
+                marker.setSnippet("Tap for directions");
+                marker.setIcon(getResources().getDrawable(markerIcon));
+                
+                // Use the final coordinates array in the lambda
+                marker.setOnMarkerClickListener((marker1, mapView) -> {
+                    openGoogleMapsNavigation(coordinates[0], coordinates[1]);
+                    return true;
+                });
+                
+                mapView.getOverlays().add(marker);
             }
             mapView.invalidate();
-            Toast.makeText(this, "Nearby parks loaded", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
+            runOnUiThread(() -> Toast.makeText(MapActivity.this, 
+                "Error loading " + placeType + " locations", Toast.LENGTH_SHORT).show());
         }
     }
 
@@ -250,4 +298,19 @@ public class MapActivity extends AppCompatActivity {
         }
     }
 
+    private void checkLocationServices() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        boolean gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        
+        if (!gpsEnabled) {
+            // Show dialog to enable GPS
+            new AlertDialog.Builder(this)
+                .setMessage("GPS is disabled. Would you like to enable it?")
+                .setPositiveButton("Settings", (dialogInterface, i) -> {
+                    startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+        }
+    }
 }
