@@ -1,6 +1,7 @@
 package garagem.ideias.dogwalkingforecast;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -8,6 +9,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,8 +21,11 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 import garagem.ideias.dogwalkingforecast.adapter.ForecastAdapter;
 import garagem.ideias.dogwalkingforecast.api.WeatherService;
+import garagem.ideias.dogwalkingforecast.auth.LoginActivity;
 import garagem.ideias.dogwalkingforecast.model.WeatherResponse;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -46,7 +51,6 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private ForecastAdapter adapter;
     private ProgressBar progressBar;
-    private MaterialToolbar toolbar;
     private FusedLocationProviderClient fusedLocationClient;
     private double currentLatitude = 0;
     private double currentLongitude = 0;
@@ -57,13 +61,26 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Initialize views
-        toolbar = findViewById(R.id.toolbar);
         recyclerView = findViewById(R.id.recyclerView);
         progressBar = findViewById(R.id.progressBar);
-        
-        setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.app_name);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        TextView welcomeMessage = findViewById(R.id.welcomeMessage);
+
+        // Get current user's first name from Firestore
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        if (auth.getCurrentUser() != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(auth.getCurrentUser().getUid())
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        String name = documentSnapshot.getString("name");
+                        if (name != null && !name.isEmpty()) {
+                            welcomeMessage.setText("Hi, " + name + "!\nWelcome to your Today's Dog Walking");
+                        }
+                    }
+                });
         }
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -73,6 +90,13 @@ public class MainActivity extends AppCompatActivity {
         // Initialize location services
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         checkLocationPermission();
+
+        // Setup logout link
+        findViewById(R.id.logoutLink).setOnClickListener(v -> {
+            FirebaseAuth.getInstance().signOut();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+        });
     }
 
     private void checkLocationPermission() {
@@ -127,13 +151,16 @@ public class MainActivity extends AppCompatActivity {
                 String countryName = address.getCountryName();
                 String locationText = cityName + ", " + countryName;
                 
-                if (getSupportActionBar() != null) {
-                    getSupportActionBar().setSubtitle(locationText);
-                }
+                updateLocationText(locationText);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void updateLocationText(String location) {
+        TextView locationText = findViewById(R.id.locationText);
+        locationText.setText(location);
     }
 
     private void fetchWeatherForecast() {

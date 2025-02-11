@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "926669286974",
+    "project_id": "dogwalkingforecast",
+    "storage_bucket": "dogwalkingforecast.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:926669286974:android:f87542b88ac5919c03ab6f",
+        "android_client_info": {
+          "package_name": "garagem.ideias.dogwalkingforecast"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAClVNtU3NiR9V99YGviNmr2bvMftJZTwM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

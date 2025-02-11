@@ -54,9 +54,14 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         int walkingScore = calculateWalkingScore(forecast);
 
         // Format temperature
-        String temperature = String.format(Locale.getDefault(),
-                "Temperature: %.1f°C (Min: %.1f°C, Max: %.1f°C)",
-                forecast.main.temp, forecast.main.temp_min, forecast.main.temp_max);
+        String temperature = String.format(Locale.getDefault(), 
+            "Temperature: %.1f°C", forecast.main.temp);
+        
+        // Format min and max temperatures
+        String minMaxTemp = String.format(Locale.getDefault(), 
+            "(Min: %.1f°C, Max: %.1f°C)", 
+            forecast.main.temp_min, 
+            forecast.main.temp_max);
 
         // Get weather description
         String description = String.format("Weather: %s\nWind: %.1f m/s\nRain chance: %.0f%%",
@@ -100,24 +105,24 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         }
 
         // Format Sunrise/Sunset
-        try {
-            if (city != null) {
-                SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-                String sunTimes = String.format("☀️ %s 🌙 %s",
-                    timeFormat.format(new Date(city.sunrise * 1000)),
-                    timeFormat.format(new Date(city.sunset * 1000)));
-                holder.sunTimesText.setText(sunTimes);
-            } else {
-                holder.sunTimesText.setVisibility(View.GONE);
-            }
-        } catch (Exception e) {
-            holder.sunTimesText.setVisibility(View.GONE);
-        }
+//        try {
+//            if (city != null) {
+//                SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+//                String sunTimes = String.format("☀️ %s 🌙 %s",
+//                    timeFormat.format(new Date(city.sunrise * 1000)),
+//                    timeFormat.format(new Date(city.sunset * 1000)));
+//                holder.sunTimesText.setText(sunTimes);
+//            } else {
+//                holder.sunTimesText.setVisibility(View.GONE);
+//            }
+//        } catch (Exception e) {
+//            holder.sunTimesText.setVisibility(View.GONE);
+//        }
 
         // Set all the text views
         holder.dateText.setText(date);
         holder.temperatureText.setText(temperature);
-        holder.descriptionText.setText(description);
+        holder.descriptionText.setText(minMaxTemp);
         holder.recommendationText.setText(recommendation);
         holder.scoreView.setScore(walkingScore);
 
@@ -171,21 +176,21 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
 
     private String generateWalkingRecommendation(int score) {
         if (score >= 90) {
-            return "Perfect weather for a walk! 🐾";
+            return "PERFECT DAY FOR A WALK! 🐾";
         } else if (score >= 70) {
-            return "Great conditions for walking! 🐕";
+            return "GREAT CONDITIONS FOR A WALK. ENJOY! 🐕";
         } else if (score >= 50) {
-            return "Decent weather for a short walk 🦮";
+            return "DECENT WEATHER FOR A SHORT WALK. 🦮";
         } else if (score >= 30) {
-            return "Consider a quick walk only 🌦️";
+            return "CONSIDER A QUICK WALK ONLY. 🌦️";
         } else {
-            return "Better stay indoors today 🏠";
+            return "BETTER STAY INDOORS TODAY 🏠";
         }
     }
 
     private String getUVIndexWarning(double uvi) {
-        if (uvi >= 11) return "⚠️ Extreme";
-        if (uvi >= 8) return "⚠️ Very High";
+        if (uvi >= 11) return "⚠️⚠️ ⚠️Extreme";
+        if (uvi >= 8) return "⚠️⚠️ Very High";
         if (uvi >= 6) return "⚠️ High";
         if (uvi >= 3) return "😎 Moderate";
         return "✅ Low";
@@ -201,10 +206,10 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
     }
 
     private String getPawSafetyWarning(double temp) {
-        if (temp >= 52) return "⚠️ Too Hot for Paws!";
-        if (temp >= 45) return "⚠️ Very Hot";
+        if (temp >= 52) return "⚠️⚠️⚠️ Too Hot for Paws!";
+        if (temp >= 45) return "⚠️⚠️ Very Hot";
         if (temp >= 35) return "😰 Watch Duration";
-        if (temp <= 0) return "❄️ Too Cold";
+        if (temp <= 0) return "❄️️ Too Cold";
         return "✅ Safe";
     }
 
@@ -222,7 +227,7 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         TextView uvIndexText;
         TextView airQualityText;
         TextView groundTempText;
-        TextView sunTimesText;
+        //TextView sunTimesText;
 
         ForecastViewHolder(View itemView) {
             super(itemView);
@@ -234,7 +239,7 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             uvIndexText = itemView.findViewById(R.id.uvIndexText);
             airQualityText = itemView.findViewById(R.id.airQualityText);
             groundTempText = itemView.findViewById(R.id.groundTempText);
-            sunTimesText = itemView.findViewById(R.id.sunTimesText);
+            //sunTimesText = itemView.findViewById(R.id.sunTimesText);
         }
     }
 }

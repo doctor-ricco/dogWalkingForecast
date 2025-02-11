@@ -40,11 +40,26 @@ import com.google.android.material.appbar.MaterialToolbar;
 import android.location.LocationManager;
 import android.app.AlertDialog;
 import android.content.Context;
+import java.io.IOException;
+import android.util.Log;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
+import java.util.Map;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.RadioGroup;
+import java.util.HashMap;
+import garagem.ideias.dogwalkingforecast.auth.LoginActivity;
 
 public class MapActivity extends AppCompatActivity {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
 
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private String userId;
     private MapView mapView;
     private FusedLocationProviderClient locationClient;
 
@@ -54,11 +69,21 @@ public class MapActivity extends AppCompatActivity {
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE));
         setContentView(R.layout.activity_map);
 
-        // Setup toolbar
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
+        userId = auth.getCurrentUser().getUid();
+
+        // Setup toolbar with add location button
         MaterialToolbar toolbar = findViewById(R.id.mapToolbar);
-        setSupportActionBar(toolbar);
+        toolbar.inflateMenu(R.menu.map_menu);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_add_location) {
+                showAddLocationDialog();
+                return true;
+            }
+            return false;
+        });
         
-        // Setup back button
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
         // Initialize map
@@ -80,36 +105,37 @@ public class MapActivity extends AppCompatActivity {
     }
 
     private void getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationClient.getLastLocation()
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+                == PackageManager.PERMISSION_GRANTED) {
+            
+            locationClient.getCurrentLocation(100, null)
                 .addOnSuccessListener(this, location -> {
                     if (location != null) {
                         // Clear any existing overlays
                         mapView.getOverlays().clear();
                         
                         // Set user location
-                        GeoPoint userLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+                        GeoPoint userLocation = new GeoPoint(
+                            location.getLatitude(), 
+                            location.getLongitude()
+                        );
                         mapView.getController().setCenter(userLocation);
                         
                         // Add user marker
-                        Marker userMarker = new Marker(mapView);
-                        userMarker.setPosition(userLocation);
-                        userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-                        userMarker.setIcon(getResources().getDrawable(R.drawable.ic_user_location));
-                        userMarker.setTitle("You are here");
-                        mapView.getOverlays().add(userMarker);
+                        addUserMarker(userLocation);
                         
-                        // Search for nearby places
-                        searchNearbyPlaces(location.getLatitude(), location.getLongitude());
-                        
-                        // Refresh map
-                        mapView.invalidate();
+                        // Load user's saved locations
+                        loadUserLocations();
                     } else {
-                        Toast.makeText(this, "Unable to get your location. Please check if GPS is enabled.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, 
+                            "Could not get current location", 
+                            Toast.LENGTH_SHORT).show();
                     }
                 })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Error getting location: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                .addOnFailureListener(this, e -> {
+                    Toast.makeText(this, 
+                        "Error getting location: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
                 });
         }
     }
@@ -128,8 +154,8 @@ public class MapActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
                     new String[]{
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
                     },
                     LOCATION_PERMISSION_REQUEST_CODE);
             return false;
@@ -138,8 +164,8 @@ public class MapActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, 
-            @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                         @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -151,71 +177,162 @@ public class MapActivity extends AppCompatActivity {
         }
     }
 
-    private void searchNearbyPlaces(double latitude, double longitude) {
-        // Search for dog parks
-        searchPlacesByType(latitude, longitude, "leisure=dog_park", R.drawable.ic_dog_paw, "Dog Park");
-        
-        // Search for veterinarians (both regular and emergency)
-        searchPlacesByType(latitude, longitude, "amenity=veterinary", R.drawable.ic_vet, "Veterinary");
+    private void searchNearbyPlaces(Location location) {
+        try {
+            double lat = location.getLatitude();
+            double lon = location.getLongitude();
+            
+            Log.d("MapActivity", String.format("Searching near lat: %f, lon: %f", lat, lon));
+            
+            // Search for dog parks with a larger radius
+            new AsyncTask<Void, Void, String>() {
+                @Override
+                protected String doInBackground(Void... voids) {
+                    try {
+                        // Try primary API first
+                        String overpassUrl = String.format(
+                            "https://overpass-api.de/api/interpreter?data=[out:json];(" +
+                            "way[\"leisure\"=\"dog_park\"](around:10000,%f,%f);" +
+                            "way[\"leisure\"=\"park\"](around:10000,%f,%f);" +
+                            "node[\"leisure\"=\"dog_park\"](around:10000,%f,%f);" +
+                            "node[\"leisure\"=\"park\"](around:10000,%f,%f);" +
+                            ");out body center;",
+                            lat, lon, lat, lon, lat, lon, lat, lon);
+                        
+                        try {
+                            String result = makeHttpRequest(overpassUrl);
+                            if (result != null) return result;
+                        } catch (Exception e) {
+                            Log.e("MapActivity", "Primary API failed: " + e.getMessage());
+                        }
+
+                        // Try backup API if primary fails
+                        String backupUrl = String.format(
+                            "https://lz4.overpass-api.de/api/interpreter?data=[out:json];(" +
+                            "way[\"leisure\"=\"dog_park\"](around:10000,%f,%f);" +
+                            "way[\"leisure\"=\"park\"](around:10000,%f,%f);" +
+                            "node[\"leisure\"=\"dog_park\"](around:10000,%f,%f);" +
+                            "node[\"leisure\"=\"park\"](around:10000,%f,%f);" +
+                            ");out body center;",
+                            lat, lon, lat, lon, lat, lon, lat, lon);
+                            
+                        return makeHttpRequest(backupUrl);
+                    } catch (Exception e) {
+                        Log.e("MapActivity", "Error fetching parks: " + e.getMessage(), e);
+                        return null;
+                    }
+                }
+
+                @Override
+                protected void onPostExecute(String result) {
+                    handlePlacesResult(result, R.drawable.ic_dog_paw, "Park");
+                }
+            }.execute();
+
+            // Search for veterinarians with a larger radius
+            new AsyncTask<Void, Void, String>() {
+                @Override
+                protected String doInBackground(Void... voids) {
+                    try {
+                        // Try primary API first
+                        String overpassUrl = String.format(
+                            "https://overpass-api.de/api/interpreter?data=[out:json];(" +
+                            "node[\"amenity\"=\"veterinary\"](around:10000,%f,%f);" +
+                            "way[\"amenity\"=\"veterinary\"](around:10000,%f,%f);" +
+                            ");out body center;",
+                            lat, lon, lat, lon);
+                        
+                        try {
+                            String result = makeHttpRequest(overpassUrl);
+                            if (result != null) return result;
+                        } catch (Exception e) {
+                            Log.e("MapActivity", "Primary API failed: " + e.getMessage());
+                        }
+
+                        // Try backup API if primary fails
+                        String backupUrl = String.format(
+                            "https://lz4.overpass-api.de/api/interpreter?data=[out:json];(" +
+                            "node[\"amenity\"=\"veterinary\"](around:10000,%f,%f);" +
+                            "way[\"amenity\"=\"veterinary\"](around:10000,%f,%f);" +
+                            ");out body center;",
+                            lat, lon, lat, lon);
+                            
+                        return makeHttpRequest(backupUrl);
+                    } catch (Exception e) {
+                        Log.e("MapActivity", "Error fetching vets: " + e.getMessage(), e);
+                        return null;
+                    }
+                }
+
+                @Override
+                protected void onPostExecute(String result) {
+                    handlePlacesResult(result, R.drawable.ic_vet, "Veterinary");
+                }
+            }.execute();
+
+        } catch (Exception e) {
+            Log.e("MapActivity", "Error in searchNearbyPlaces: " + e.getMessage(), e);
+            Toast.makeText(this, "Error searching nearby places", Toast.LENGTH_SHORT).show();
+        }
     }
 
-    private void searchPlacesByType(double latitude, double longitude, String query, 
-            int markerIcon, String placeType) {
-        new AsyncTask<Void, Void, String>() {
-            @Override
-            protected String doInBackground(Void... voids) {
-                try {
-                    // Modified query to get only the center points of areas
-                    String overpassUrl;
-                    if (query.contains("leisure=dog_park")) {
-                        overpassUrl = String.format(
-                            "https://overpass-api.de/api/interpreter?data=" +
-                            "[out:json][timeout:25];" +
-                            "(" +
-                            "  way[%s](around:5000,%f,%f);" +
-                            ");" +
-                            "out center;" + // Get center points for ways
-                            "node[%s](around:5000,%f,%f);" +
-                            "out;",
-                            query, latitude, longitude,
-                            query, latitude, longitude
-                        );
-                    } else {
-                        // Original query for other types (vets)
-                        overpassUrl = String.format(
-                            "https://overpass-api.de/api/interpreter?data=" +
-                            "[out:json][timeout:25];" +
-                            "(" +
-                            "  node[%s](around:5000,%f,%f);" +
-                            ");" +
-                            "out;",
-                            query, latitude, longitude
-                        );
-                    }
-
-                    URL url = new URL(overpassUrl);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder result = new StringBuilder();
-                    String line;
-                    while ((line = rd.readLine()) != null) {
-                        result.append(line);
-                    }
-                    rd.close();
-                    return result.toString();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return null;
+    private void handlePlacesResult(String result, int iconRes, String placeType) {
+        if (result != null) {
+            try {
+                JSONObject data = new JSONObject(result);
+                int count = data.getJSONArray("elements").length();
+                Log.d("MapActivity", "Found " + count + " " + placeType.toLowerCase());
+                if (count > 0) {
+                    addMarkersToMap(result, iconRes, placeType);
+                } else {
+                    Toast.makeText(MapActivity.this, 
+                        "No " + placeType.toLowerCase() + "s found in this area", 
+                        Toast.LENGTH_SHORT).show();
                 }
+            } catch (Exception e) {
+                Log.e("MapActivity", "Error parsing " + placeType.toLowerCase() + " data: " + e.getMessage(), e);
+                Toast.makeText(MapActivity.this, 
+                    "Error loading " + placeType.toLowerCase() + " locations", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(MapActivity.this, 
+                "Could not fetch " + placeType.toLowerCase() + " data", 
+                Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String makeHttpRequest(String urlString) throws IOException {
+        URL url = new URL(urlString);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        connection.setRequestProperty("User-Agent", "DogWalkingForecast Android App");
+        connection.setConnectTimeout(15000);
+        connection.setReadTimeout(15000);
+        
+        try {
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                Log.e("MapActivity", "HTTP error code: " + responseCode);
+                return null;
             }
 
-            @Override
-            protected void onPostExecute(String result) {
-                if (result != null) {
-                    addMarkersToMap(result, markerIcon, placeType);
-                }
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
             }
-        }.execute();
+            
+            return response.toString();
+        } catch (Exception e) {
+            Log.e("MapActivity", "Error making HTTP request: " + e.getMessage());
+            return null;
+        } finally {
+            connection.disconnect();
+        }
     }
 
     private void addMarkersToMap(String jsonResult, int markerIcon, String placeType) {
@@ -312,5 +429,112 @@ public class MapActivity extends AppCompatActivity {
                 .setNegativeButton("Cancel", null)
                 .show();
         }
+    }
+
+    private void loadUserLocations() {
+        db.collection("locations")
+            .whereEqualTo("userId", userId)
+            .get()
+            .addOnSuccessListener(documents -> {
+                for (DocumentSnapshot doc : documents) {
+                    String type = doc.getString("type");
+                    String name = doc.getString("name");
+                    Double latitude = doc.getDouble("latitude");
+                    Double longitude = doc.getDouble("longitude");
+                    
+                    if (latitude != null && longitude != null) {
+                        addMarkerToMap(
+                            latitude,
+                            longitude,
+                            name,
+                            type,
+                            type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet
+                        );
+                    }
+                }
+            });
+    }
+
+    private void showAddLocationDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_location, null);
+        EditText nameInput = dialogView.findViewById(R.id.nameInput);
+        RadioGroup typeGroup = dialogView.findViewById(R.id.typeGroup);
+
+        new AlertDialog.Builder(this)
+            .setTitle("Add Location")
+            .setView(dialogView)
+            .setPositiveButton("Add", (dialog, which) -> {
+                String name = nameInput.getText().toString().trim();
+                
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Please enter a location name", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                String type = typeGroup.getCheckedRadioButtonId() == R.id.radioPark ? "park" : "vet";
+                org.osmdroid.util.GeoPoint mapCenter = (org.osmdroid.util.GeoPoint) mapView.getMapCenter();
+
+                // Create location data
+                Map<String, Object> location = new HashMap<>();
+                location.put("userId", auth.getCurrentUser().getUid());
+                location.put("name", name);
+                location.put("type", type);
+                location.put("latitude", mapCenter.getLatitude());
+                location.put("longitude", mapCenter.getLongitude());
+                location.put("createdAt", com.google.firebase.Timestamp.now());
+
+                Log.d("MapActivity", "Saving location: " + location.toString());
+
+                db.collection("locations")
+                    .add(location)
+                    .addOnSuccessListener(documentReference -> {
+                        Log.d("MapActivity", "Location added with ID: " + documentReference.getId());
+                        addMarkerToMap(
+                            mapCenter.getLatitude(),
+                            mapCenter.getLongitude(),
+                            name,
+                            type,
+                            type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet
+                        );
+                        Toast.makeText(this, "Location added successfully", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e("MapActivity", "Error adding location: " + e.getMessage(), e);
+                        Toast.makeText(this, 
+                            "Error adding location: " + e.getMessage(), 
+                            Toast.LENGTH_LONG).show();
+                    });
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void addUserMarker(GeoPoint userLocation) {
+        // Add user marker
+        Marker userMarker = new Marker(mapView);
+        userMarker.setPosition(userLocation);
+        userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        userMarker.setIcon(getResources().getDrawable(R.drawable.ic_user_location));
+        userMarker.setTitle("You are here");
+        mapView.getOverlays().add(userMarker);
+    }
+
+    private void addMarkerToMap(double lat, double lon, String name, String type, int iconRes) {
+        // Add marker to map
+        GeoPoint location = new GeoPoint(lat, lon);
+        Marker marker = new Marker(mapView);
+        marker.setPosition(location);
+        marker.setTitle(name);
+        marker.setSnippet("Tap for directions");
+        marker.setIcon(getResources().getDrawable(iconRes));
+        
+        // Use the final coordinates array in the lambda
+        marker.setOnMarkerClickListener((marker1, mapView) -> {
+            openGoogleMapsNavigation(lat, lon);
+            return true;
+        });
+        
+        mapView.getOverlays().add(marker);
+        mapView.invalidate();
     }
 }

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Color attributes -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/black</item>
+        <item name="colorAccent">@color/primary</item>
+        
+        <!-- Force black background everywhere -->
+        <item name="android:windowBackground">@color/black</item>
+        <item name="android:colorBackground">@color/black</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/black</item>
+        <item name="android:navigationBarColor">@color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">@color/text_primary_dark</item>
+        <item name="android:textColorSecondary">@color/text_secondary_dark</item>
+        <item name="materialCardViewStyle">@style/CardStyle</item>
+        
+        <!-- Remove AppBarLayout shadow -->
+        <item name="appBarLayoutStyle">@style/AppBarLayoutStyle</item>
+    </style>
+
+    <style name="CardStyle" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/surface_dark</item>
+        <item name="cardElevation">0dp</item>
+        <item name="cardCornerRadius">0dp</item>
+        <item name="contentPadding">16dp</item>
+        <item name="android:layout_margin">0dp</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <style name="ToolbarTitle" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_primary_dark</item>
+    </style>
+
+    <!-- Add this new style -->
+    <style name="AppBarLayoutStyle" parent="Widget.MaterialComponents.AppBarLayout.Primary">
+        <item name="android:background">@color/black</item>
+        <item name="android:elevation">0dp</item>
+        <item name="elevation">0dp</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="liftOnScroll">false</item>
+    </style>
+</resources> 
