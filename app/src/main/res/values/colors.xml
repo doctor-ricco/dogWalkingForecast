@@ -1,43 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base theme colors -->
-    <color name="primary">#1DB954</color>
-    <color name="primary_dark">#158C40</color>
-    <color name="primary_light">#2ED973</color>
-    <color name="primary_variant">#2ED973</color>
-    <color name="accent">#81C784</color>
-    
+    <!-- Primary Colors -->
+    <color name="primary">#2196F3</color>
+    <color name="primary_dark">#1976D2</color>
+    <color name="primary_light">#BBDEFB</color>
+    <color name="primary_variant">#388E3C</color>
+    <color name="accent">#448AFF</color>
+
     <!-- Background Colors -->
-    <color name="background">#01271b</color>
-    <color name="background_dark">#121212</color>
-    <color name="surface_dark">#242424</color>
+    <color name="background">#0A1929</color>
+    <color name="surface_dark">#132F4C</color>
+    <color name="card_dark">#173A5E</color>
     
     <!-- Card Colors -->
     <color name="card_background">#FFFFFF</color>
-    <color name="card_background_secondary">#F8F9FA</color>
-    <color name="card_dark">#2A2A2A</color>
     <color name="card_stroke">#E0E0E0</color>
     
-    <!-- Score Colors -->
-    <color name="score_background">#F5F5F5</color>
-    <color name="score_text">#212121</color>
-    <color name="score_excellent">#2E7D32</color>
-    <color name="score_good">#689F38</color>
-    <color name="score_moderate">#FDD835</color>
-    <color name="score_poor">#F57C00</color>
-    <color name="score_bad">#D32F2F</color>
-
     <!-- Text Colors -->
-    <color name="text_primary">#212121</color>
-    <color name="text_secondary">#757575</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
     <color name="text_primary_dark">#FFFFFF</color>
     <color name="text_secondary_dark">#B3FFFFFF</color>
+    <color name="text_disabled_dark">#80FFFFFF</color>
+    <color name="text_date">#0A1929</color>
+    <color name="text_recommendation">#757575</color>
+    <color name="text_weather_info">#2196F3</color>
 
-    <!-- Gradient colors for toolbar -->
-    <color name="gradient_start">#0D0D0D</color>
-    <color name="gradient_end">#1DB954</color>
+    <!-- Score Colors -->
+    <color name="score_background">#F5F5F5</color>
+    <color name="score_text">#FFFFFF</color>
+    <color name="score_excellent">#4CAF50</color>
+    <color name="score_good">#8BC34A</color>
+    <color name="score_moderate">#FDD835</color>
+    <color name="score_poor">#FF9800</color>
+    <color name="score_bad">#F44336</color>
 
-    <!-- System colors -->
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Standard Colors -->
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- Add this new color -->
+    <color name="info_background">#F5F5F5</color>  <!-- Light gray for info section -->
 </resources>

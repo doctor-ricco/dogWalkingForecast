@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.View;
 import androidx.core.content.ContextCompat;
@@ -16,6 +17,7 @@ public class CircularScoreView extends View {
     private Paint textPaint;
     private RectF circleRect;
     private int score = 0;
+    private float textSize = 48f;
 
     public CircularScoreView(Context context) {
         super(context);
@@ -31,51 +33,42 @@ public class CircularScoreView extends View {
         backgroundPaint = new Paint();
         backgroundPaint.setColor(ContextCompat.getColor(getContext(), R.color.score_background));
         backgroundPaint.setStyle(Paint.Style.STROKE);
-        backgroundPaint.setStrokeWidth(24f);
+        backgroundPaint.setStrokeWidth(8f);
         backgroundPaint.setAntiAlias(true);
         backgroundPaint.setStrokeCap(Paint.Cap.ROUND);
 
         scorePaint = new Paint();
         scorePaint.setStyle(Paint.Style.STROKE);
-        scorePaint.setStrokeWidth(24f);
+        scorePaint.setStrokeWidth(12f);  // Reduced from 16f to 12f for a cleaner look
         scorePaint.setAntiAlias(true);
         scorePaint.setStrokeCap(Paint.Cap.ROUND);
 
         textPaint = new Paint();
-        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.score_text));
-        textPaint.setTextSize(48f);
+        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.text_date));
+        textPaint.setTextSize(textSize);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setAntiAlias(true);
-        textPaint.setFakeBoldText(true);
-        
-        // Stronger shadow for better depth
-        scorePaint.setShadowLayer(6, 0, 3, Color.parseColor("#40000000"));
-        
+        textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));  // Just using one method for bold
+
         circleRect = new RectF();
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+        invalidate();
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        int padding = 10;
-        circleRect.set(padding, padding, w - padding, h - padding);
-    }
-
-    public void setScore(int score) {
-        this.score = score;
-        updateScoreColor();
-        invalidate();
-    }
-
-    private void updateScoreColor() {
-        int colorResId;
-        if (score >= 90) colorResId = R.color.score_excellent;
-        else if (score >= 70) colorResId = R.color.score_good;
-        else if (score >= 50) colorResId = R.color.score_moderate;
-        else if (score >= 30) colorResId = R.color.score_poor;
-        else colorResId = R.color.score_bad;
         
-        scorePaint.setColor(ContextCompat.getColor(getContext(), colorResId));
+        // Calculate the dimensions of the circle
+        float padding = backgroundPaint.getStrokeWidth();
+        circleRect.set(padding, padding, w - padding, h - padding);
+        
+        // Adjust text size based on view size
+        textSize = w / 4f;
+        textPaint.setTextSize(textSize);
     }
 
     @Override
@@ -84,11 +77,6 @@ public class CircularScoreView extends View {
 
         int width = getWidth();
         int height = getHeight();
-        int size = Math.min(width, height);
-        float strokeWidth = scorePaint.getStrokeWidth();
-        float padding = strokeWidth / 2 + 8;
-
-        circleRect.set(padding, padding, size - padding, size - padding);
 
         // Draw background circle
         canvas.drawArc(circleRect, 0, 360, false, backgroundPaint);
@@ -103,10 +91,12 @@ public class CircularScoreView extends View {
         float textX = width / 2f;
         float textY = height / 2f - ((textPaint.descent() + textPaint.ascent()) / 2);
         
-        // Draw percentage symbol smaller
+        // Draw percentage symbol smaller with same color as main text
         String percentSymbol = "%";
         Paint percentPaint = new Paint(textPaint);
         percentPaint.setTextSize(textPaint.getTextSize() * 0.5f);
+        percentPaint.setColor(ContextCompat.getColor(getContext(), R.color.text_date));
+        percentPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));  // Same bold style as number
         
         canvas.drawText(scoreText, textX, textY, textPaint);
         canvas.drawText(percentSymbol, 
@@ -116,11 +106,17 @@ public class CircularScoreView extends View {
     }
 
     private int getScoreColor(int score) {
-        if (score >= 90) return ContextCompat.getColor(getContext(), R.color.score_excellent);
-        if (score >= 70) return ContextCompat.getColor(getContext(), R.color.score_good);
-        if (score >= 50) return ContextCompat.getColor(getContext(), R.color.score_moderate);
-        if (score >= 30) return ContextCompat.getColor(getContext(), R.color.score_poor);
-        return ContextCompat.getColor(getContext(), R.color.score_bad);
+        if (score >= 90) {
+            return ContextCompat.getColor(getContext(), R.color.score_excellent);  // Green
+        } else if (score >= 70) {
+            return ContextCompat.getColor(getContext(), R.color.score_good);       // Light Green
+        } else if (score >= 50) {
+            return ContextCompat.getColor(getContext(), R.color.score_moderate);   // Yellow
+        } else if (score >= 30) {
+            return ContextCompat.getColor(getContext(), R.color.score_poor);       // Orange
+        } else {
+            return ContextCompat.getColor(getContext(), R.color.score_bad);        // Red
+        }
     }
 
     @Override

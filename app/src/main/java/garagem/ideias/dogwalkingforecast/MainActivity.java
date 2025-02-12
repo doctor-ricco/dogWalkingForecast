@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
             currentLongitude, 
             "metric", 
             API_KEY,
-            "minutely,hourly"  // exclude unnecessary data
+            "minutely,hourly"  // Keep only daily forecasts
         ).enqueue(new Callback<WeatherResponse>() {
             @Override
             public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {

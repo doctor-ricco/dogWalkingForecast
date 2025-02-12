@@ -30,7 +30,7 @@ public class WeatherResponse {
         public double temp_max;
         public int pressure;
         public int humidity;
-        public double ground_temp;
+        public double grnd_temp;
     }
 
     public static class Weather {

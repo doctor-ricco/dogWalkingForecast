@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -46,34 +47,35 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
     public void onBindViewHolder(@NonNull ForecastViewHolder holder, int position) {
         ForecastItem forecast = forecasts.get(position);
 
-        // Format date
+        // Format date with day of week and date (on same line)
         SimpleDateFormat sdf = new SimpleDateFormat("EEEE, MMM d", Locale.getDefault());
         String date = sdf.format(new Date(forecast.dt * 1000));
+        holder.dateText.setText(date);
 
         // Calculate walking score
         int walkingScore = calculateWalkingScore(forecast);
-
-        // Format temperature
-        String temperature = String.format(Locale.getDefault(), 
-            "Temperature: %.1f°C", forecast.main.temp);
+        holder.scoreView.setScore(walkingScore);
         
-        // Format min and max temperatures
-        String minMaxTemp = String.format(Locale.getDefault(), 
-            "(Min: %.1f°C, Max: %.1f°C)", 
-            forecast.main.temp_min, 
-            forecast.main.temp_max);
-
-        // Get weather description
-        String description = String.format("Weather: %s\nWind: %.1f m/s\nRain chance: %.0f%%",
-                forecast.weather.get(0).description,
-                forecast.wind.speed,
-                forecast.pop * 100);
-
+        // Set recommendation
         String recommendation = generateWalkingRecommendation(walkingScore);
+        holder.recommendationText.setText(recommendation);
+
+        // Format temperature and weather description on the same line
+        String temperature = String.format(Locale.getDefault(), 
+            "Temperature: %.1f°C     %s",
+            forecast.main.temp,
+            forecast.weather.get(0).description);
+        holder.temperatureText.setText(temperature);
+
+        // Rain chance and wind on second line
+        String description = String.format("Rain chance: %.0f%%     Wind speed: %.1f m/s",
+            forecast.pop * 100,
+            forecast.wind.speed);
+        holder.descriptionText.setText(description);
 
         // Format UV Index
         try {
-            String uvIndex = String.format("UV Index: %.1f %s", 
+            String uvIndex = String.format("UV Index: %.1f  %s", 
                 forecast.uvi,
                 getUVIndexWarning(forecast.uvi));
             holder.uvIndexText.setText(uvIndex);
@@ -96,35 +98,15 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
 
         // Format Ground Temperature
         try {
-            String groundTemp = String.format("Ground Temp: %.1f°C %s",
-                forecast.main.ground_temp,
-                getPawSafetyWarning(forecast.main.ground_temp));
+            double estimatedGroundTemp = estimateGroundTemperature(forecast);
+            String groundTemp = String.format("Ground Temperature: %.1f°C %s",
+                estimatedGroundTemp,
+                getPawSafetyWarning(estimatedGroundTemp));
             holder.groundTempText.setText(groundTemp);
+            holder.groundTempText.setVisibility(View.VISIBLE);
         } catch (Exception e) {
             holder.groundTempText.setVisibility(View.GONE);
         }
-
-        // Format Sunrise/Sunset
-//        try {
-//            if (city != null) {
-//                SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
-//                String sunTimes = String.format("☀️ %s 🌙 %s",
-//                    timeFormat.format(new Date(city.sunrise * 1000)),
-//                    timeFormat.format(new Date(city.sunset * 1000)));
-//                holder.sunTimesText.setText(sunTimes);
-//            } else {
-//                holder.sunTimesText.setVisibility(View.GONE);
-//            }
-//        } catch (Exception e) {
-//            holder.sunTimesText.setVisibility(View.GONE);
-//        }
-
-        // Set all the text views
-        holder.dateText.setText(date);
-        holder.temperatureText.setText(temperature);
-        holder.descriptionText.setText(minMaxTemp);
-        holder.recommendationText.setText(recommendation);
-        holder.scoreView.setScore(walkingScore);
 
         // Set click listener for the card view
         holder.itemView.setOnClickListener(view -> {
@@ -176,41 +158,80 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
 
     private String generateWalkingRecommendation(int score) {
         if (score >= 90) {
-            return "PERFECT DAY FOR A WALK! 🐾";
+            return "IDEAL CONDITIONS";
         } else if (score >= 70) {
-            return "GREAT CONDITIONS FOR A WALK. ENJOY! 🐕";
+            return "FAVORABLE CONDITIONS";
         } else if (score >= 50) {
-            return "DECENT WEATHER FOR A SHORT WALK. 🦮";
+            return "MODERATE CONDITIONS";
         } else if (score >= 30) {
-            return "CONSIDER A QUICK WALK ONLY. 🌦️";
+            return "EXERCISE CAUTION";
         } else {
-            return "BETTER STAY INDOORS TODAY 🏠";
+            return "NOT RECOMMENDED";
         }
     }
 
     private String getUVIndexWarning(double uvi) {
-        if (uvi >= 11) return "⚠️⚠️ ⚠️Extreme";
-        if (uvi >= 8) return "⚠️⚠️ Very High";
-        if (uvi >= 6) return "⚠️ High";
-        if (uvi >= 3) return "😎 Moderate";
-        return "✅ Low";
+        if (uvi >= 11) return "Extreme";
+        if (uvi >= 8) return "Very High";
+        if (uvi >= 6) return "High";
+        if (uvi >= 3) return "Moderate";
+        return "Low";
     }
 
     private String getAirQualityDescription(double aqi) {
-        if (aqi >= 300) return "⚠️ Hazardous";
-        if (aqi >= 200) return "⚠️ Very Unhealthy";
-        if (aqi >= 150) return "⚠️ Unhealthy";
-        if (aqi >= 100) return "😷 Moderate";
-        if (aqi >= 50) return "🙂 Fair";
-        return "✅ Good";
+        if (aqi >= 300) return "Hazardous";
+        if (aqi >= 200) return "Very Unhealthy";
+        if (aqi >= 150) return "Unhealthy";
+        if (aqi >= 100) return "Moderate";
+        if (aqi >= 50) return "Fair";
+        return "Good";
     }
 
     private String getPawSafetyWarning(double temp) {
-        if (temp >= 52) return "⚠️⚠️⚠️ Too Hot for Paws!";
-        if (temp >= 45) return "⚠️⚠️ Very Hot";
-        if (temp >= 35) return "😰 Watch Duration";
-        if (temp <= 0) return "❄️️ Too Cold";
-        return "✅ Safe";
+        if (temp >= 52) return "Critical - Avoid Walking";
+        if (temp >= 45) return "Very Hot - Not Safe";
+        if (temp >= 35) return "Caution Required";
+        if (temp <= 0) return "Too Cold";
+        return "Safe";
+    }
+
+    private double estimateGroundTemperature(ForecastItem forecast) {
+        double airTemp = forecast.main.temp;
+        double solarFactor = calculateSolarFactor(forecast);
+        
+        // Ground temperature is typically warmer than air temperature during the day
+        // and slightly cooler at night
+        return airTemp + (solarFactor * 15); // Can be up to 15°C warmer than air temp
+    }
+
+    private double calculateSolarFactor(ForecastItem forecast) {
+        // Get hour of the day (0-23)
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(forecast.dt * 1000);
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        
+        // Base solar factor on time of day (0.0 to 1.0)
+        double timeFactor = 0.0;
+        if (hour >= 6 && hour <= 18) { // Daytime
+            // Peak at noon (hour 12)
+            timeFactor = 1.0 - Math.abs(12 - hour) / 6.0;
+        }
+        
+        // Adjust for cloud cover (0.0 to 1.0)
+        double cloudFactor = 1.0 - (forecast.clouds.all / 100.0);
+        
+        // Adjust for weather conditions
+        double weatherFactor = 1.0;
+        if (forecast.weather != null && !forecast.weather.isEmpty()) {
+            String weatherMain = forecast.weather.get(0).main.toLowerCase();
+            if (weatherMain.contains("rain") || weatherMain.contains("snow")) {
+                weatherFactor = 0.3;
+            } else if (weatherMain.contains("cloud")) {
+                weatherFactor = 0.7;
+            }
+        }
+        
+        return timeFactor * cloudFactor * weatherFactor;
     }
 
     @Override
@@ -227,7 +248,6 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
         TextView uvIndexText;
         TextView airQualityText;
         TextView groundTempText;
-        //TextView sunTimesText;
 
         ForecastViewHolder(View itemView) {
             super(itemView);
@@ -239,7 +259,6 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             uvIndexText = itemView.findViewById(R.id.uvIndexText);
             airQualityText = itemView.findViewById(R.id.airQualityText);
             groundTempText = itemView.findViewById(R.id.groundTempText);
-            //sunTimesText = itemView.findViewById(R.id.sunTimesText);
         }
     }
 }

@@ -4,21 +4,26 @@
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
         <item name="colorAccent">@color/accent</item>
+        
+        <!-- Background colors -->
         <item name="android:windowBackground">@color/background</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        
+        <!-- Status bar -->
         <item name="android:statusBarColor">@color/black</item>
+        <item name="android:navigationBarColor">@color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
         
-        <!-- Text Colors -->
-        <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <!-- Text colors -->
+        <item name="android:textColorPrimary">@color/text_primary_dark</item>
+        <item name="android:textColorSecondary">@color/text_secondary_dark</item>
         
-        <!-- Card Style -->
+        <!-- Material Card Style -->
         <item name="materialCardViewStyle">@style/App.CardView</item>
         
-        <!-- Add elevation to cards -->
-        <item name="cardElevation">8dp</item>
-        
-        <!-- Add transitions -->
+        <!-- Transitions -->
         <item name="android:windowActivityTransitions">true</item>
         <item name="android:windowEnterTransition">@android:transition/fade</item>
         <item name="android:windowExitTransition">@android:transition/fade</item>
@@ -26,16 +31,18 @@
         <!-- Typography -->
         <item name="textAppearanceHeadline6">@style/TextAppearance.App.Headline6</item>
         <item name="textAppearanceBody1">@style/TextAppearance.App.Body1</item>
+        <!-- Removed textAppearanceTitle -->
         <!-- Customize your theme here. -->
     </style>
 
     <style name="App.CardView" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/card_dark</item>
         <item name="cardElevation">4dp</item>
-        <item name="cardCornerRadius">8dp</item>
-        <item name="cardBackgroundColor">@color/card_background</item>
-        <item name="contentPadding">0dp</item>
-        <item name="android:layout_marginHorizontal">8dp</item>
-        <item name="android:layout_marginVertical">4dp</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="contentPadding">16dp</item>
+        <item name="rippleColor">@color/primary_light</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/primary_dark</item>
     </style>
 
     <style name="TextAppearance.App.Subtitle" parent="TextAppearance.MaterialComponents.Subtitle1">
