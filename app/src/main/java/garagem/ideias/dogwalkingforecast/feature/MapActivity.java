@@ -16,6 +16,8 @@ import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.events.MapEventsReceiver;
+import org.osmdroid.views.overlay.MapEventsOverlay;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -52,6 +54,8 @@ import android.widget.EditText;
 import android.widget.RadioGroup;
 import java.util.HashMap;
 import garagem.ideias.dogwalkingforecast.auth.LoginActivity;
+import android.widget.ImageView;
+import com.google.android.material.snackbar.Snackbar;
 
 public class MapActivity extends AppCompatActivity {
 
@@ -62,6 +66,8 @@ public class MapActivity extends AppCompatActivity {
     private String userId;
     private MapView mapView;
     private FusedLocationProviderClient locationClient;
+    private ImageView mapTargetIndicator;
+    private boolean isSelectingLocation = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +108,8 @@ public class MapActivity extends AppCompatActivity {
 
         // Check location services
         checkLocationServices();
+
+        mapTargetIndicator = findViewById(R.id.mapTargetIndicator);
     }
 
     private void getCurrentLocation() {
@@ -381,7 +389,7 @@ public class MapActivity extends AppCompatActivity {
                 
                 // Use the final coordinates array in the lambda
                 marker.setOnMarkerClickListener((marker1, mapView) -> {
-                    openGoogleMapsNavigation(coordinates[0], coordinates[1]);
+                    showNavigationDialog(location, name);
                     return true;
                 });
                 
@@ -395,24 +403,38 @@ public class MapActivity extends AppCompatActivity {
         }
     }
 
-    private void openGoogleMapsNavigation(double destLat, double destLon) {
-        // Create a Uri with the destination coordinates
-        Uri gmmIntentUri = Uri.parse("google.navigation:q=" + destLat + "," + destLon + "&mode=w");
-        
-        // Create an Intent to open Google Maps
-        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-        mapIntent.setPackage("com.google.android.apps.maps");
-
-        // Check if Google Maps is installed
-        if (mapIntent.resolveActivity(getPackageManager()) != null) {
-            startActivity(mapIntent);
-        } else {
-            // If Google Maps isn't installed, open in browser
-            Uri browserUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" 
-                + destLat + "," + destLon + "&travelmode=walking");
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, browserUri);
-            startActivity(browserIntent);
-        }
+    private void showNavigationDialog(GeoPoint point, String name) {
+        new AlertDialog.Builder(this)
+            .setTitle("Navigate to " + name)
+            .setMessage("Choose your navigation app")
+            .setPositiveButton("Google Maps", (dialog, which) -> {
+                // Open in Google Maps
+                Uri gmmIntentUri = Uri.parse("google.navigation:q=" + 
+                    point.getLatitude() + "," + point.getLongitude());
+                Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                mapIntent.setPackage("com.google.android.apps.maps");
+                
+                if (mapIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(mapIntent);
+                } else {
+                    Toast.makeText(this, "Google Maps is not installed", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNeutralButton("Other Apps", (dialog, which) -> {
+                // Open in any available map app
+                Uri location = Uri.parse("geo:" + point.getLatitude() + 
+                    "," + point.getLongitude() + "?q=" + point.getLatitude() + 
+                    "," + point.getLongitude() + "(" + name + ")");
+                Intent mapIntent = new Intent(Intent.ACTION_VIEW, location);
+                
+                if (mapIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(mapIntent);
+                } else {
+                    Toast.makeText(this, "No map application found", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     private void checkLocationServices() {
@@ -456,6 +478,32 @@ public class MapActivity extends AppCompatActivity {
     }
 
     private void showAddLocationDialog() {
+        mapTargetIndicator.setVisibility(View.VISIBLE);
+        Toast.makeText(this, "Move the map to position the target on your desired location, then tap to confirm", Toast.LENGTH_LONG).show();
+        
+        // Add a map events overlay to handle taps
+        MapEventsReceiver mapEventsReceiver = new MapEventsReceiver() {
+            @Override
+            public boolean singleTapConfirmedHelper(GeoPoint p) {
+                GeoPoint selectedLocation = (GeoPoint) mapView.getMapCenter();
+                showLocationDetailsDialog(selectedLocation);
+                mapTargetIndicator.setVisibility(View.GONE);
+                mapView.getOverlays().remove(this);  // Remove this overlay after selection
+                return true;
+            }
+
+            @Override
+            public boolean longPressHelper(GeoPoint p) {
+                return false;
+            }
+        };
+        
+        MapEventsOverlay eventsOverlay = new MapEventsOverlay(mapEventsReceiver);
+        mapView.getOverlays().add(eventsOverlay);
+        mapView.invalidate();
+    }
+
+    private void showLocationDetailsDialog(GeoPoint location) {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_location, null);
         EditText nameInput = dialogView.findViewById(R.id.nameInput);
         RadioGroup typeGroup = dialogView.findViewById(R.id.typeGroup);
@@ -465,47 +513,47 @@ public class MapActivity extends AppCompatActivity {
             .setView(dialogView)
             .setPositiveButton("Add", (dialog, which) -> {
                 String name = nameInput.getText().toString().trim();
-                
                 if (name.isEmpty()) {
-                    Toast.makeText(this, "Please enter a location name", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Please enter a name", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                String type = typeGroup.getCheckedRadioButtonId() == R.id.radioPark ? "park" : "vet";
-                org.osmdroid.util.GeoPoint mapCenter = (org.osmdroid.util.GeoPoint) mapView.getMapCenter();
+                // Get the selected type (make it final)
+                final String type = typeGroup.getCheckedRadioButtonId() == R.id.radioVet ? "vet" : "park";
 
                 // Create location data
-                Map<String, Object> location = new HashMap<>();
-                location.put("userId", auth.getCurrentUser().getUid());
-                location.put("name", name);
-                location.put("type", type);
-                location.put("latitude", mapCenter.getLatitude());
-                location.put("longitude", mapCenter.getLongitude());
-                location.put("createdAt", com.google.firebase.Timestamp.now());
+                Map<String, Object> locationData = new HashMap<>();
+                locationData.put("userId", userId);
+                locationData.put("name", name);
+                locationData.put("type", type);
+                locationData.put("latitude", location.getLatitude());
+                locationData.put("longitude", location.getLongitude());
 
-                Log.d("MapActivity", "Saving location: " + location.toString());
-
+                // Save to Firestore
                 db.collection("locations")
-                    .add(location)
+                    .add(locationData)
                     .addOnSuccessListener(documentReference -> {
-                        Log.d("MapActivity", "Location added with ID: " + documentReference.getId());
+                        // Add marker to map (using final variables)
                         addMarkerToMap(
-                            mapCenter.getLatitude(),
-                            mapCenter.getLongitude(),
+                            location.getLatitude(),
+                            location.getLongitude(),
                             name,
                             type,
                             type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet
                         );
-                        Toast.makeText(this, "Location added successfully", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Location saved successfully", Toast.LENGTH_SHORT).show();
                     })
                     .addOnFailureListener(e -> {
-                        Log.e("MapActivity", "Error adding location: " + e.getMessage(), e);
-                        Toast.makeText(this, 
-                            "Error adding location: " + e.getMessage(), 
-                            Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, "Error saving location: " + e.getMessage(), 
+                            Toast.LENGTH_SHORT).show();
                     });
+
+                mapView.setOnClickListener(null); // Remove the click listener
             })
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Cancel", (dialog, which) -> {
+                mapView.setOnClickListener(null); // Remove the click listener
+                mapTargetIndicator.setVisibility(View.GONE); // Hide the target
+            })
             .show();
     }
 
@@ -519,18 +567,17 @@ public class MapActivity extends AppCompatActivity {
         mapView.getOverlays().add(userMarker);
     }
 
-    private void addMarkerToMap(double lat, double lon, String name, String type, int iconRes) {
-        // Add marker to map
-        GeoPoint location = new GeoPoint(lat, lon);
+    private void addMarkerToMap(double latitude, double longitude, String name, String type, int iconResource) {
+        GeoPoint point = new GeoPoint(latitude, longitude);
         Marker marker = new Marker(mapView);
-        marker.setPosition(location);
+        marker.setPosition(point);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        marker.setIcon(getResources().getDrawable(iconResource));
         marker.setTitle(name);
-        marker.setSnippet("Tap for directions");
-        marker.setIcon(getResources().getDrawable(iconRes));
         
-        // Use the final coordinates array in the lambda
+        // Add click listener to marker for navigation
         marker.setOnMarkerClickListener((marker1, mapView) -> {
-            openGoogleMapsNavigation(lat, lon);
+            showNavigationDialog(point, name);
             return true;
         });
         

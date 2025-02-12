@@ -31,4 +31,25 @@
         android:layout_height="match_parent"
         android:layout_below="@id/appBarLayout" />
 
+    <!-- Target indicator -->
+    <ImageView
+        android:id="@+id/mapTargetIndicator"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_centerInParent="true"
+        android:src="@drawable/map_target"
+        android:visibility="gone" />
+
+    <!-- Keep existing buttons -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal">
+
+        <!-- ... existing buttons ... -->
+    </LinearLayout>
+
 </RelativeLayout>
