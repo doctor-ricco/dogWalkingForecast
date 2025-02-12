@@ -389,7 +389,7 @@ public class MapActivity extends AppCompatActivity {
                 
                 // Use the final coordinates array in the lambda
                 marker.setOnMarkerClickListener((marker1, mapView) -> {
-                    showNavigationDialog(location, name);
+                    showMarkerOptionsDialog(location, name, null);
                     return true;
                 });
                 
@@ -403,35 +403,68 @@ public class MapActivity extends AppCompatActivity {
         }
     }
 
-    private void showNavigationDialog(GeoPoint point, String name) {
+    private void showMarkerOptionsDialog(GeoPoint point, String name, String documentId) {
         new AlertDialog.Builder(this)
-            .setTitle("Navigate to " + name)
-            .setMessage("Choose your navigation app")
-            .setPositiveButton("Google Maps", (dialog, which) -> {
-                // Open in Google Maps
-                Uri gmmIntentUri = Uri.parse("google.navigation:q=" + 
-                    point.getLatitude() + "," + point.getLongitude());
-                Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-                mapIntent.setPackage("com.google.android.apps.maps");
-                
-                if (mapIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivity(mapIntent);
-                } else {
-                    Toast.makeText(this, "Google Maps is not installed", Toast.LENGTH_SHORT).show();
+            .setTitle(name)
+            .setItems(new String[]{"Navigate", "Delete"}, (dialog, which) -> {
+                switch (which) {
+                    case 0: // Navigate
+                        // Get current location for the starting point
+                        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+                                == PackageManager.PERMISSION_GRANTED) {
+                            
+                            locationClient.getLastLocation().addOnSuccessListener(currentLocation -> {
+                                if (currentLocation != null) {
+                                    // Show route in Google Maps
+                                    Uri gmmIntentUri = Uri.parse("https://www.google.com/maps/dir/?api=1" +
+                                        "&origin=" + currentLocation.getLatitude() + "," + currentLocation.getLongitude() +
+                                        "&destination=" + point.getLatitude() + "," + point.getLongitude() +
+                                        "&travelmode=walking");
+                                    
+                                    Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                                    mapIntent.setPackage("com.google.android.apps.maps");
+                                    
+                                    if (mapIntent.resolveActivity(getPackageManager()) != null) {
+                                        startActivity(mapIntent);
+                                    } else {
+                                        // Fallback to browser if Google Maps isn't installed
+                                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                                        startActivity(browserIntent);
+                                    }
+                                } else {
+                                    Toast.makeText(this, "Could not get current location", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                        break;
+                        
+                    case 1: // Delete
+                        showDeleteConfirmationDialog(documentId, name);
+                        break;
                 }
             })
-            .setNeutralButton("Other Apps", (dialog, which) -> {
-                // Open in any available map app
-                Uri location = Uri.parse("geo:" + point.getLatitude() + 
-                    "," + point.getLongitude() + "?q=" + point.getLatitude() + 
-                    "," + point.getLongitude() + "(" + name + ")");
-                Intent mapIntent = new Intent(Intent.ACTION_VIEW, location);
-                
-                if (mapIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivity(mapIntent);
-                } else {
-                    Toast.makeText(this, "No map application found", Toast.LENGTH_SHORT).show();
-                }
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void showDeleteConfirmationDialog(String documentId, String name) {
+        new AlertDialog.Builder(this)
+            .setTitle("Delete Location")
+            .setMessage("Are you sure you want to delete " + name + "?")
+            .setPositiveButton("Delete", (dialog, which) -> {
+                db.collection("locations")
+                    .document(documentId)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Location deleted successfully", Toast.LENGTH_SHORT).show();
+                        // Refresh the map
+                        mapView.getOverlays().clear();
+                        getCurrentLocation(); // This will reload user location and all markers
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Error deleting location: " + e.getMessage(), 
+                            Toast.LENGTH_SHORT).show();
+                    });
             })
             .setNegativeButton("Cancel", null)
             .show();
@@ -470,7 +503,8 @@ public class MapActivity extends AppCompatActivity {
                             longitude,
                             name,
                             type,
-                            type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet
+                            type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet,
+                            doc.getId()  // Pass the document ID
                         );
                     }
                 }
@@ -533,13 +567,13 @@ public class MapActivity extends AppCompatActivity {
                 db.collection("locations")
                     .add(locationData)
                     .addOnSuccessListener(documentReference -> {
-                        // Add marker to map (using final variables)
                         addMarkerToMap(
                             location.getLatitude(),
                             location.getLongitude(),
                             name,
                             type,
-                            type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet
+                            type.equals("park") ? R.drawable.ic_dog_paw : R.drawable.ic_vet,
+                            documentReference.getId()  // Pass the new document ID
                         );
                         Toast.makeText(this, "Location saved successfully", Toast.LENGTH_SHORT).show();
                     })
@@ -567,7 +601,9 @@ public class MapActivity extends AppCompatActivity {
         mapView.getOverlays().add(userMarker);
     }
 
-    private void addMarkerToMap(double latitude, double longitude, String name, String type, int iconResource) {
+    private void addMarkerToMap(double latitude, double longitude, String name, 
+        String type, int iconResource, String documentId) {
+        
         GeoPoint point = new GeoPoint(latitude, longitude);
         Marker marker = new Marker(mapView);
         marker.setPosition(point);
@@ -575,9 +611,9 @@ public class MapActivity extends AppCompatActivity {
         marker.setIcon(getResources().getDrawable(iconResource));
         marker.setTitle(name);
         
-        // Add click listener to marker for navigation
+        // Add click listener to marker for options
         marker.setOnMarkerClickListener((marker1, mapView) -> {
-            showNavigationDialog(point, name);
+            showMarkerOptionsDialog(point, name, documentId);
             return true;
         });
         
