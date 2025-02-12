@@ -56,6 +56,7 @@ import java.util.HashMap;
 import garagem.ideias.dogwalkingforecast.auth.LoginActivity;
 import android.widget.ImageView;
 import com.google.android.material.snackbar.Snackbar;
+import android.widget.TextView;
 
 public class MapActivity extends AppCompatActivity {
 
@@ -404,70 +405,87 @@ public class MapActivity extends AppCompatActivity {
     }
 
     private void showMarkerOptionsDialog(GeoPoint point, String name, String documentId) {
-        new AlertDialog.Builder(this)
-            .setTitle(name)
-            .setItems(new String[]{"Navigate", "Delete"}, (dialog, which) -> {
-                switch (which) {
-                    case 0: // Navigate
-                        // Get current location for the starting point
-                        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-                                == PackageManager.PERMISSION_GRANTED) {
-                            
-                            locationClient.getLastLocation().addOnSuccessListener(currentLocation -> {
-                                if (currentLocation != null) {
-                                    // Show route in Google Maps
-                                    Uri gmmIntentUri = Uri.parse("https://www.google.com/maps/dir/?api=1" +
-                                        "&origin=" + currentLocation.getLatitude() + "," + currentLocation.getLongitude() +
-                                        "&destination=" + point.getLatitude() + "," + point.getLongitude() +
-                                        "&travelmode=walking");
-                                    
-                                    Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-                                    mapIntent.setPackage("com.google.android.apps.maps");
-                                    
-                                    if (mapIntent.resolveActivity(getPackageManager()) != null) {
-                                        startActivity(mapIntent);
-                                    } else {
-                                        // Fallback to browser if Google Maps isn't installed
-                                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-                                        startActivity(browserIntent);
-                                    }
-                                } else {
-                                    Toast.makeText(this, "Could not get current location", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                        }
-                        break;
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_marker_options, null);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create();
+
+        // Set location name
+        TextView locationName = dialogView.findViewById(R.id.locationName);
+        locationName.setText(name);
+
+        // Setup cancel button
+        dialogView.findViewById(R.id.btnCancel).setOnClickListener(v -> dialog.dismiss());
+
+        // Setup navigate button
+        dialogView.findViewById(R.id.btnNavigate).setOnClickListener(v -> {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+                    == PackageManager.PERMISSION_GRANTED) {
+                
+                locationClient.getLastLocation().addOnSuccessListener(currentLocation -> {
+                    if (currentLocation != null) {
+                        Uri gmmIntentUri = Uri.parse("https://www.google.com/maps/dir/?api=1" +
+                            "&origin=" + currentLocation.getLatitude() + "," + currentLocation.getLongitude() +
+                            "&destination=" + point.getLatitude() + "," + point.getLongitude() +
+                            "&travelmode=walking");
                         
-                    case 1: // Delete
-                        showDeleteConfirmationDialog(documentId, name);
-                        break;
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+                        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                        mapIntent.setPackage("com.google.android.apps.maps");
+                        
+                        if (mapIntent.resolveActivity(getPackageManager()) != null) {
+                            startActivity(mapIntent);
+                        } else {
+                            Intent browserIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                            startActivity(browserIntent);
+                        }
+                        dialog.dismiss();
+                    }
+                });
+            }
+        });
+
+        // Setup delete button
+        dialogView.findViewById(R.id.btnDelete).setOnClickListener(v -> {
+            dialog.dismiss();
+            showDeleteConfirmationDialog(documentId, name);
+        });
+
+        // Make dialog background transparent to show rounded corners
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.show();
     }
 
     private void showDeleteConfirmationDialog(String documentId, String name) {
-        new AlertDialog.Builder(this)
-            .setTitle("Delete Location")
-            .setMessage("Are you sure you want to delete " + name + "?")
-            .setPositiveButton("Delete", (dialog, which) -> {
-                db.collection("locations")
-                    .document(documentId)
-                    .delete()
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(this, "Location deleted successfully", Toast.LENGTH_SHORT).show();
-                        // Refresh the map
-                        mapView.getOverlays().clear();
-                        getCurrentLocation(); // This will reload user location and all markers
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Error deleting location: " + e.getMessage(), 
-                            Toast.LENGTH_SHORT).show();
-                    });
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_delete_confirmation, null);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setView(dialogView)
+            .create();
+
+        // Set delete message
+        TextView deleteMessage = dialogView.findViewById(R.id.deleteMessage);
+        deleteMessage.setText("Are you sure you want to delete " + name + "?");
+
+        // Setup cancel button
+        dialogView.findViewById(R.id.btnCancel).setOnClickListener(v -> dialog.dismiss());
+
+        // Setup confirm delete button
+        dialogView.findViewById(R.id.btnConfirmDelete).setOnClickListener(v -> {
+            db.collection("locations")
+                .document(documentId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Location deleted successfully", Toast.LENGTH_SHORT).show();
+                    mapView.getOverlays().clear();
+                    getCurrentLocation();
+                    dialog.dismiss();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error deleting location: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                });
+        });
+
+        dialog.show();
     }
 
     private void checkLocationServices() {
@@ -592,10 +610,9 @@ public class MapActivity extends AppCompatActivity {
     }
 
     private void addUserMarker(GeoPoint userLocation) {
-        // Add user marker
         Marker userMarker = new Marker(mapView);
         userMarker.setPosition(userLocation);
-        userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);  // Center the marker
         userMarker.setIcon(getResources().getDrawable(R.drawable.ic_user_location));
         userMarker.setTitle("You are here");
         mapView.getOverlays().add(userMarker);
