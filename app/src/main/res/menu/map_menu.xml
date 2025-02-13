@@ -3,7 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_add_location"
-        android:icon="@drawable/ic_add_location"
+        android:icon="@drawable/ic_add"
         android:title="Add Location"
-        app:showAsAction="always"/>
+        app:showAsAction="ifRoom"/>
+    
+    <item
+        android:id="@+id/action_my_locations"
+        android:icon="@drawable/ic_list"
+        android:title="My Locations"
+        app:showAsAction="ifRoom"/>
 </menu> 

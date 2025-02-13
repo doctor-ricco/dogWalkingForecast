@@ -45,6 +45,7 @@ import android.widget.LinearLayout;
 import android.widget.ImageButton;
 import garagem.ideias.dogwalkingforecast.feature.MapActivity;
 import garagem.ideias.dogwalkingforecast.view.CircularScoreView;
+import garagem.ideias.dogwalkingforecast.feature.UserLocationsBottomSheet;
 
 public class MainActivity extends AppCompatActivity {
     private static final String API_KEY = "15083413d0f0d7bcc5b45362c97f8998";
@@ -149,6 +150,13 @@ public class MainActivity extends AppCompatActivity {
         // Apply click listener to both views
         scoreContainer.setOnClickListener(mapClickListener);
         locationMessage.setOnClickListener(mapClickListener);
+
+        // Setup locations button
+        TextView myLocationsButton = findViewById(R.id.myLocationsButton);
+        myLocationsButton.setOnClickListener(v -> {
+            UserLocationsBottomSheet bottomSheet = new UserLocationsBottomSheet();
+            bottomSheet.show(getSupportFragmentManager(), "userLocations");
+        });
     }
 
     private void checkLocationPermission() {

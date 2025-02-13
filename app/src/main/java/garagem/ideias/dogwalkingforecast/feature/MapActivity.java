@@ -92,6 +92,10 @@ public class MapActivity extends AppCompatActivity {
             if (item.getItemId() == R.id.action_add_location) {
                 showAddLocationDialog();
                 return true;
+            } else if (item.getItemId() == R.id.action_my_locations) {
+                UserLocationsBottomSheet bottomSheet = new UserLocationsBottomSheet();
+                bottomSheet.show(getSupportFragmentManager(), "userLocations");
+                return true;
             }
             return false;
         });
@@ -758,5 +762,12 @@ public class MapActivity extends AppCompatActivity {
             .addOnFailureListener(e -> 
                 Toast.makeText(this, "Error saving location", Toast.LENGTH_SHORT).show()
             );
+    }
+
+    public void navigateToLocation(double latitude, double longitude) {
+        GeoPoint point = new GeoPoint(latitude, longitude);
+        mapView.getController().setCenter(point);
+        mapView.getController().setZoom(15.0);
+        mapView.invalidate();
     }
 }
