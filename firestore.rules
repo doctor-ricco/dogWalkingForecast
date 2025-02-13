@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /shared_locations/{locationId} {
+      // Anyone can read locations
+      allow read: if request.auth != null;
+      
+      // Only authenticated users can create locations
+      allow create: if request.auth != null;
+      
+      // Only the creator can update/delete their locations
+      allow update, delete: if request.auth != null && 
+          request.auth.uid == resource.data.userId;
+    }
+  }
+} 

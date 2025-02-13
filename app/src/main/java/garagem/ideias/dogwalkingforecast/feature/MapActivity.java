@@ -57,6 +57,10 @@ import garagem.ideias.dogwalkingforecast.auth.LoginActivity;
 import android.widget.ImageView;
 import com.google.android.material.snackbar.Snackbar;
 import android.widget.TextView;
+import garagem.ideias.dogwalkingforecast.model.MapLocation;
+import java.util.List;
+import java.util.UUID;
+import java.util.Locale;
 
 public class MapActivity extends AppCompatActivity {
 
@@ -69,6 +73,7 @@ public class MapActivity extends AppCompatActivity {
     private FusedLocationProviderClient locationClient;
     private ImageView mapTargetIndicator;
     private boolean isSelectingLocation = false;
+    private List<Marker> sharedMarkers = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,6 +140,9 @@ public class MapActivity extends AppCompatActivity {
                         
                         // Load user's saved locations
                         loadUserLocations();
+
+                        // Load shared locations after map is centered and user marker is added
+                        loadSharedLocations();
                     } else {
                         Toast.makeText(this, 
                             "Could not get current location", 
@@ -636,5 +644,119 @@ public class MapActivity extends AppCompatActivity {
         
         mapView.getOverlays().add(marker);
         mapView.invalidate();
+    }
+
+    private void loadSharedLocations() {
+        db.collection("locations")  // Using existing collection instead of creating "shared_locations"
+            .get()
+            .addOnSuccessListener(queryDocumentSnapshots -> {
+                // Clear existing shared markers
+                for (Marker marker : sharedMarkers) {
+                    mapView.getOverlays().remove(marker);
+                }
+                sharedMarkers.clear();
+
+                // Add new markers
+                for (DocumentSnapshot document : queryDocumentSnapshots) {
+                    // Get location data from existing structure
+                    double latitude = document.getDouble("latitude");
+                    double longitude = document.getDouble("longitude");
+                    String name = document.getString("name");
+                    String type = document.getString("type");
+
+                    if (latitude != 0 && longitude != 0 && name != null && type != null) {
+                        Marker marker = createMarker(latitude, longitude, name, type);
+                        mapView.getOverlays().add(marker);
+                        sharedMarkers.add(marker);
+                    }
+                }
+                mapView.invalidate();
+            })
+            .addOnFailureListener(e -> 
+                Toast.makeText(this, "Error loading locations", Toast.LENGTH_SHORT).show()
+            );
+    }
+
+    private Marker createMarker(double lat, double lon, String title, String type) {
+        Marker marker = new Marker(mapView);
+        marker.setPosition(new GeoPoint(lat, lon));
+        marker.setTitle(title);
+        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        
+        // Set icon based on type
+        int iconRes;
+        switch (type.toLowerCase()) {
+            case "vet":
+                iconRes = R.drawable.ic_vet;
+                break;
+            case "pet_store":
+                iconRes = R.drawable.ic_pet_store;
+                break;
+            case "emergency":
+                iconRes = R.drawable.ic_emergency;
+                break;
+            default:
+                iconRes = R.drawable.ic_dog_paw;
+        }
+        marker.setIcon(getResources().getDrawable(iconRes));
+        
+        // Add click listener for navigation
+        marker.setOnMarkerClickListener((marker1, mapView) -> {
+            showNavigationDialog(marker1.getPosition(), title);
+            return true;
+        });
+        
+        return marker;
+    }
+
+    private void showNavigationDialog(GeoPoint position, String locationName) {
+        new AlertDialog.Builder(this)
+            .setTitle(locationName)
+            .setMessage("Would you like to navigate to this location?")
+            .setPositiveButton("Navigate", (dialog, which) -> {
+                // Open Google Maps with navigation
+                String uri = String.format(Locale.ENGLISH, 
+                    "google.navigation:q=%f,%f", 
+                    position.getLatitude(), 
+                    position.getLongitude());
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                intent.setPackage("com.google.android.apps.maps");
+                
+                // Check if Google Maps is installed
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(intent);
+                } else {
+                    // If Google Maps isn't installed, open in browser
+                    String browserUri = String.format(Locale.ENGLISH,
+                        "https://www.google.com/maps/dir/?api=1&destination=%f,%f",
+                        position.getLatitude(),
+                        position.getLongitude());
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(browserUri));
+                    startActivity(browserIntent);
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void saveLocation(double lat, double lon, String name, String type) {
+        MapLocation location = new MapLocation(
+            UUID.randomUUID().toString(),
+            lat,
+            lon,
+            name,
+            type
+        );
+
+        db.collection("shared_locations")
+            .document(location.getId())
+            .set(location)
+            .addOnSuccessListener(aVoid -> {
+                Toast.makeText(this, "Location saved successfully", Toast.LENGTH_SHORT).show();
+                loadSharedLocations(); // Refresh markers
+            })
+            .addOnFailureListener(e -> 
+                Toast.makeText(this, "Error saving location", Toast.LENGTH_SHORT).show()
+            );
     }
 }
