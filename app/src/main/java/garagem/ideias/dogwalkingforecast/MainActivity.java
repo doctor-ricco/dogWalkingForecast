@@ -151,12 +151,6 @@ public class MainActivity extends AppCompatActivity {
         scoreContainer.setOnClickListener(mapClickListener);
         locationMessage.setOnClickListener(mapClickListener);
 
-        // Setup locations button
-        TextView myLocationsButton = findViewById(R.id.myLocationsButton);
-        myLocationsButton.setOnClickListener(v -> {
-            UserLocationsBottomSheet bottomSheet = new UserLocationsBottomSheet();
-            bottomSheet.show(getSupportFragmentManager(), "userLocations");
-        });
     }
 
     private void checkLocationPermission() {

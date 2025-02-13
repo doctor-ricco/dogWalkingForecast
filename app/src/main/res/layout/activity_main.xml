@@ -75,17 +75,6 @@
                     android:layout_marginBottom="32dp"
                     android:background="?attr/selectableItemBackground"/>
 
-                <!-- Add this near the logout link -->
-                <TextView
-                    android:id="@+id/myLocationsButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="My Locations"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    android:padding="4dp"
-                    android:layout_marginBottom="8dp"
-                    android:background="?attr/selectableItemBackground"/>
 
                 <!-- Score container - make it clickable -->
                 <LinearLayout

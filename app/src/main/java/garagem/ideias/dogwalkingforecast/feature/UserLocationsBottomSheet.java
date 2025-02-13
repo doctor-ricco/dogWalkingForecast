@@ -1,10 +1,12 @@
 package garagem.ideias.dogwalkingforecast.feature;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -49,13 +51,17 @@ public class UserLocationsBottomSheet extends BottomSheetDialogFragment {
 
         // Setup RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new UserLocationsAdapter(new ArrayList<>(), location -> {
-            // Handle location click - navigate to map
-            if (getActivity() instanceof MapActivity) {
-                ((MapActivity) getActivity()).navigateToLocation(location.latitude, location.longitude);
-                dismiss();
-            }
-        });
+        adapter = new UserLocationsAdapter(
+            new ArrayList<>(),
+            location -> {
+                // Handle location click - navigate to map
+                if (getActivity() instanceof MapActivity) {
+                    ((MapActivity) getActivity()).navigateToLocation(location.latitude, location.longitude);
+                    dismiss();
+                }
+            },
+            location -> deleteLocation(location.id, location.name) // Handle delete
+        );
         recyclerView.setAdapter(adapter);
 
         // Load user's locations
@@ -71,6 +77,7 @@ public class UserLocationsBottomSheet extends BottomSheetDialogFragment {
                 List<LocationItem> locations = new ArrayList<>();
                 for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                     LocationItem location = new LocationItem(
+                        document.getId(),
                         document.getString("name"),
                         document.getString("type"),
                         document.getDouble("latitude"),
@@ -90,14 +97,42 @@ public class UserLocationsBottomSheet extends BottomSheetDialogFragment {
             });
     }
 
+    // Add this method to handle location deletion
+    private void deleteLocation(String locationId, String locationName) {
+        new AlertDialog.Builder(requireContext())
+            .setTitle("Delete Location")
+            .setMessage("Are you sure you want to delete " + locationName + "?")
+            .setPositiveButton("Delete", (dialog, which) -> {
+                db.collection("locations")
+                    .document(locationId)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(getContext(), "Location deleted", Toast.LENGTH_SHORT).show();
+                        loadUserLocations(); // Refresh the list
+                        
+                        // Refresh map markers
+                        if (getActivity() instanceof MapActivity) {
+                            ((MapActivity) getActivity()).refreshLocations();
+                        }
+                    })
+                    .addOnFailureListener(e -> 
+                        Toast.makeText(getContext(), "Error deleting location", Toast.LENGTH_SHORT).show()
+                    );
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
     // Data class for location items
     public static class LocationItem {
+        String id;
         String name;
         String type;
         double latitude;
         double longitude;
 
-        LocationItem(String name, String type, double latitude, double longitude) {
+        LocationItem(String id, String name, String type, double latitude, double longitude) {
+            this.id = id;
             this.name = name;
             this.type = type;
             this.latitude = latitude;

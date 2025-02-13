@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.ImageButton;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
@@ -12,14 +13,22 @@ import garagem.ideias.dogwalkingforecast.R;
 public class UserLocationsAdapter extends RecyclerView.Adapter<UserLocationsAdapter.LocationViewHolder> {
     private List<UserLocationsBottomSheet.LocationItem> locations;
     private final OnLocationClickListener listener;
+    private final OnLocationDeleteListener deleteListener;
 
     public interface OnLocationClickListener {
         void onLocationClick(UserLocationsBottomSheet.LocationItem location);
     }
 
-    public UserLocationsAdapter(List<UserLocationsBottomSheet.LocationItem> locations, OnLocationClickListener listener) {
+    public interface OnLocationDeleteListener {
+        void onLocationDelete(UserLocationsBottomSheet.LocationItem location);
+    }
+
+    public UserLocationsAdapter(List<UserLocationsBottomSheet.LocationItem> locations, 
+                              OnLocationClickListener listener,
+                              OnLocationDeleteListener deleteListener) {
         this.locations = locations;
         this.listener = listener;
+        this.deleteListener = deleteListener;
     }
 
     @NonNull
@@ -36,6 +45,7 @@ public class UserLocationsAdapter extends RecyclerView.Adapter<UserLocationsAdap
         holder.nameText.setText(location.name);
         holder.typeText.setText(location.type);
         holder.itemView.setOnClickListener(v -> listener.onLocationClick(location));
+        holder.deleteButton.setOnClickListener(v -> deleteListener.onLocationDelete(location));
     }
 
     @Override
@@ -51,11 +61,13 @@ public class UserLocationsAdapter extends RecyclerView.Adapter<UserLocationsAdap
     static class LocationViewHolder extends RecyclerView.ViewHolder {
         TextView nameText;
         TextView typeText;
+        ImageButton deleteButton;
 
         LocationViewHolder(View itemView) {
             super(itemView);
             nameText = itemView.findViewById(R.id.locationName);
             typeText = itemView.findViewById(R.id.locationType);
+            deleteButton = itemView.findViewById(R.id.deleteButton);
         }
     }
 } 

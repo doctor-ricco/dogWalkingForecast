@@ -770,4 +770,25 @@ public class MapActivity extends AppCompatActivity {
         mapView.getController().setZoom(15.0);
         mapView.invalidate();
     }
+
+    public void refreshLocations() {
+        // Clear existing markers
+        mapView.getOverlays().clear();
+        sharedMarkers.clear();
+
+        // Re-add user marker
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+                == PackageManager.PERMISSION_GRANTED) {
+            locationClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        addUserMarker(new GeoPoint(location.getLatitude(), location.getLongitude()));
+                    }
+                });
+        }
+
+        // Reload locations
+        loadUserLocations();
+        loadSharedLocations();
+    }
 }
