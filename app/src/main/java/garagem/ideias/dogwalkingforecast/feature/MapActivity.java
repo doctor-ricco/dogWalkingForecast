@@ -195,7 +195,7 @@ public class MapActivity extends AppCompatActivity {
             
             // Search for dog parks with a larger radius
             new AsyncTask<Void, Void, String>() {
-                @Override
+                    @Override
                 protected String doInBackground(Void... voids) {
                     try {
                         // Try primary API first

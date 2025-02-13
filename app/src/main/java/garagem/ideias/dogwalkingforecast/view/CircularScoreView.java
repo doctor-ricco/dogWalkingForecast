@@ -31,11 +31,10 @@ public class CircularScoreView extends View {
 
     private void init() {
         backgroundPaint = new Paint();
-        backgroundPaint.setColor(ContextCompat.getColor(getContext(), R.color.score_background));
-        backgroundPaint.setStyle(Paint.Style.STROKE);
-        backgroundPaint.setStrokeWidth(8f);
         backgroundPaint.setAntiAlias(true);
-        backgroundPaint.setStrokeCap(Paint.Cap.ROUND);
+        backgroundPaint.setStyle(Paint.Style.STROKE);
+        backgroundPaint.setStrokeWidth(12f);  // Increased from 8f to 12f for bolder line
+        backgroundPaint.setColor(Color.parseColor("#20FFFFFF")); // Semi-transparent white
 
         scorePaint = new Paint();
         scorePaint.setStyle(Paint.Style.STROKE);
@@ -44,10 +43,10 @@ public class CircularScoreView extends View {
         scorePaint.setStrokeCap(Paint.Cap.ROUND);
 
         textPaint = new Paint();
-        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.text_date));
-        textPaint.setTextSize(textSize);
-        textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setAntiAlias(true);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setColor(Color.WHITE);  // Changed to white
+        textPaint.setTextSize(textSize);
         textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));  // Just using one method for bold
 
         circleRect = new RectF();
